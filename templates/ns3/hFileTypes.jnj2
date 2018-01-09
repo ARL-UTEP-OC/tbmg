@@ -1,0 +1,131 @@
+#ifndef {{jinjaModelName|upper}}_TYPE_{{jinjaPacketType}}_H
+#define {{jinjaModelName|upper}}_TYPE_{{jinjaPacketType}}_H
+#include "ns3/{{jinjaModelName}}-PacketType.h"
+#include "ns3/application.h"
+#include "ns3/traced-callback.h"
+#include "ns3/nstime.h"
+#include "ns3/average.h"
+#include "ns3/simulator.h"
+#include <map>
+
+namespace ns3 {
+/**
+ * \ingroup {{jinjaModelName}}Type{{jinjaPacketType}}
+ * \brief 
+ *
+ * Note: 
+ */
+class {{jinjaModelName}}Type{{jinjaPacketType}} : public {{jinjaModelName}}PacketType
+{
+public:
+
+  int GetTypeId (void);
+  //getters and setters functions (auto-generated)
+  {%- for fieldName in jinjaFieldNames %}
+  {%- if fieldName[2]=='1' %}
+  uint8_t get_{{fieldName[1]}}();
+  void set_{{fieldName[1]}}(unsigned char val);
+  {%- elif fieldName[2]=='2' %}
+  uint16_t get_{{fieldName[1]}}();
+  void set_{{fieldName[1]}}(uint16_t val);
+  {%- elif fieldName[2]=='4' %}
+  uint32_t get_{{fieldName[1]}}();
+  void set_{{fieldName[1]}}(uint32_t val);
+  {%- elif fieldName[2]=='8' %}
+  uint64_t get_{{fieldName[1]}}();
+  void set_{{fieldName[1]}}(uint64_t val) ;
+  {%- else %}
+  unsigned char* get_{{fieldName[1]}}();
+  void set_{{fieldName[1]}}(unsigned char* val);
+  {%- endif %}
+  {%- endfor %}
+
+  /**
+   * create a {{jinjaModelName}}Type
+   */
+  {{jinjaModelName}}Type{{jinjaPacketType}} (/* any input parameters, these are all optional */);
+  virtual ~{{jinjaModelName}}Type{{jinjaPacketType}} ();
+
+  float isPacketType(unsigned char* candidate, int size);
+
+  Ptr<Packet> getPacket(void);
+
+private:
+ 
+    /**
+   * \brief Writes data to buffer in little-endian format.
+   *
+   * Least significant byte of data is at lowest buffer address
+   *
+   * \param buffer the buffer to write to
+   * \param data the data to write
+   */
+  void Write16 (uint8_t *buffer, const uint16_t data);
+
+  /**
+   * \brief Writes data to buffer in little-endian format.
+   *
+   * Least significant byte of data is at lowest buffer address
+   *
+   * \param buffer the buffer to write to
+   * \param data the data to write
+   */
+  void Write32 (uint8_t *buffer, const uint32_t data);
+
+    /**
+   * \brief Writes data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+   void Write64 (uint8_t *buffer, const uint64_t data);
+
+  /**
+   * \brief Read data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+  void Read16 (const uint8_t *buffer, uint16_t &data);
+
+  /**
+   * \brief Writes data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+  void Read32 (const uint8_t *buffer, uint32_t &data);
+
+  /**
+   * \brief Writes data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+  void Read64 (const uint8_t *buffer, uint64_t &data);
+
+  void DoDispose (void);
+  
+  //variables (auto-generated)
+  int mtype;
+  {%- for fieldName in jinjaFieldNames %}
+  {%- if fieldName[2]=='1' %}
+  unsigned char {{fieldName[1]}};
+  {%- elif fieldName[2]=='2' %}
+  uint16_t {{fieldName[1]}};
+  {%- elif fieldName[2]=='4' %}
+  uint32_t {{fieldName[1]}};
+  {%- elif fieldName[2]=='8' %}
+  uint64_t {{fieldName[1]}};
+  {%- else %}
+  unsigned char {{fieldName[1]}}[{{fieldName[2]}}];
+  {%- endif %}
+  {%- endfor %}
+  
+  Ptr<Packet> dataPacket;
+
+};
+
+} // namespace ns3
+
+#endif /* {{jinjaModelName_Type|upper}}_TYPE_{{jinjaPacketType}}_H */

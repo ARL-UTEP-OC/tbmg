@@ -1,0 +1,60 @@
+from scapy.all import *
+from grammar import {{jinjaModelName}}Grammar
+{%- for t in range(0, jinjaPacketTypes|length) %}
+from {{jinjaModelName}}Type{{t}} import {{jinjaModelName}}{{t}}
+{%- endfor %}
+
+class {{jinjaModelName}}Client():
+
+    def __init__(self, src, dst):
+        self.grammar = {{jinjaModelName}}Grammar.{{jinjaModelName}}StateMachine(0)
+        self.name = '{{jinjaModelName}}'
+        self.protocol_id = getattr(IP_PROTOS, '{{jinjaLayerData["protoName"]|lower}}')
+        self.src = src
+        self.dst = dst
+
+        self.types = []
+        {%- for t in range(0, jinjaPacketTypes|length) %}
+        self.types.append({{jinjaModelName}}{{t}}())
+        {%- endfor %}
+
+    def bind(self):
+        '''Bind new layer for dissecting.
+        Binding only needs to occur once as each type shares the same fields.'''
+        split_layers(IP, {{jinjaLayerData["protoName"]|upper}}, proto=self.protocol_id)
+        bind_layers(IP, {{jinjaModelName}}{{jinjaPacketType}}, proto=self.protocol_id
+        {%- if "sport" in jinjaLayerData -%}, sport={{jinjaLayerData["sport"]}} {%- endif -%}
+        {%- if "dport" in jinjaLayerData -%}, dport={{jinjaLayerData["dport"]}} {%- endif -%}
+        )
+        
+    def sniffFilter(self, packet):
+        if packet.haslayer({{jinjaModelName}}{{jinjaPacketType}}) and packet[IP].src==self.dst:
+            print "Valid packet recieved:",packet.show()
+            return 1
+        return 0
+        
+    def getLayers(self, pkt):
+        yield pkt.name
+        while pkt.payload:
+            pkt = pkt.payload
+            yield pkt.name
+    
+    def reply(self, packet):
+        '''Build response based on the grammar.'''
+        t = packet[{{jinjaModelName}}{{jinjaPacketType}}].{{jinjaPacketTypeUnique[0][0]}}
+        print "Received type: " + str(t)
+        #{{todo}} convert the packet type into the state machine's number
+        t=0
+        
+        nextState = self.grammar.getNextState(t)
+        print "Next state: " + str(nextState)
+        
+        #{{todo}} test the back and forth
+        exit()
+        
+        #send(getPacket('127.0.0.1'))
+        
+    def start(self):
+        '''Start communicating.'''
+        self.bind()
+        sniff(lfilter=self.sniffFilter, prn=self.reply)

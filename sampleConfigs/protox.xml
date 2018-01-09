@@ -1,0 +1,53 @@
+<xml>
+    <model-basis>
+        <proto-name>
+            protox
+        </proto-name>
+		<dissector-filename>
+		<!-- Optional: This must exist in the dissector directory specified in settings.py -->
+			dissector_protox_jca.lua
+		</dissector-filename>
+        <path-to-pcap>
+            sampleConfigs/captures/protox_test.pcap
+        </path-to-pcap>
+        <keyword>
+            Message Id
+        </keyword>
+        <multi-inclusive-layers>
+            false
+        </multi-inclusive-layers>
+        <extracted-fields>
+            <layer name="eth">
+                <field xml-name="mac-src" pdml-name="src" />
+                <field xml-name="mac-dst" pdml-name="dst" />
+            </layer>
+            <layer name="ip">
+                <field xml-name="ip-src" pdml-name="src" />
+                <field xml-name="ip-dst" pdml-name="dst" />
+            </layer>
+        </extracted-fields>
+    </model-basis>
+    
+    <model-generation>
+        <model-name>
+            protoxtest
+        </model-name>
+        <network-layer>
+			IPv4
+		</network-layer>
+		<transport-layer/>
+    </model-generation>
+    
+    <scenario-generation>
+        <remote-ip>
+            10.0.0.3
+        </remote-ip>
+        <local-ip>
+            10.0.0.1
+        </local-ip>
+        <gateway-ip/>
+        <hil>
+            False
+        </hil>
+    </scenario-generation>
+</xml>

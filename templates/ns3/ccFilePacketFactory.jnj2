@@ -1,0 +1,24 @@
+//This file was generated automatically, please do not edit unless you know exactly what you're doing.
+#include "{{jinjaModelName}}-PacketFactory.h"
+
+namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("{{jinjaModelName}}-PacketFactory");
+
+{{jinjaModelName}}PacketType*
+{{jinjaModelName}}PacketFactory::createPacketType (int packetType)
+{
+{% set count = 0 %}
+{%- for type in jinjaPacketTypes %}
+  {% if loop.first %}
+  if (packetType == {{jinjaModelName}}_type{{count}})
+	return new {{jinjaModelName}}Type{{count}}();
+  {% else %}
+  else if (packetType == {{jinjaModelName}}_type{{count}})
+	return new {{jinjaModelName}}Type{{count}}();
+  {% endif %}
+{%- set count = count + 1 %}
+{%- endfor %}
+  return 0;
+}
+}

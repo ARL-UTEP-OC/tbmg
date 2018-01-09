@@ -1,0 +1,36 @@
+{% extends "/root/arl-ns3/templates/ns3/ccFile.jnj2" %}
+{% block headerIncludes %}
+{{ super() }}
+#include "ns3/udp-header.h"
+{% endblock %}
+
+{% block headerRemove %}
+      /*Don't need to remove header if UDP*/
+{% endblock %}
+
+{% block createSocket %}
+  NS_LOG_FUNCTION (this);
+
+  m_started = Simulator::Now ();
+
+  m_socket = Socket::CreateSocket (GetNode (), TypeId::LookupByName ("ns3::UdpSocketFactory"));
+  NS_ASSERT (m_socket != 0);
+  m_socket->SetRecvCallback (MakeCallback (&{{jinjaModelName}}::Receive, this));
+  //will eventually make port dynamic
+  InetSocketAddress src = InetSocketAddress (Ipv4Address::GetAny (), 68);
+  int status;
+  status = m_socket->Bind (src);
+  NS_ASSERT (status != -1);
+  //will eventually make port dynamic
+  InetSocketAddress dst = InetSocketAddress (m_remote, 67);
+  status = m_socket->Connect (dst);
+  NS_ASSERT (status != -1);
+  sm = new {{jinjaModelName}}StateMachine(0);
+  cout << "NODE" << m_id << ": Initializing" << endl;
+  if (m_instantiator)
+  {
+     cout << "NODE " << m_id << ": Starting instantiator; scheduled to send packets every "<<m_interval << " seconds " << endl;
+     Send ();
+  }
+
+{% endblock %}

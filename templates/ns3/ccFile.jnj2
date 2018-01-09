@@ -1,0 +1,251 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+{% block headerIncludes %}
+#include "{{jinjaModelName}}.h"
+#include "ns3/header.h"
+#include "ns3/ptr.h"
+#include "ns3/ipv4-header.h"
+#include <stdint.h>
+#include "ns3/assert.h"
+#include "ns3/log.h"
+#include "ns3/ipv4-address.h"
+#include "ns3/socket.h"
+#include "ns3/uinteger.h"
+#include "ns3/boolean.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/packet.h"
+#include "ns3/trace-source-accessor.h"
+{% endblock %}
+
+namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("{{jinjaModelName}}");
+
+NS_OBJECT_ENSURE_REGISTERED ({{jinjaModelName}});
+
+TypeId
+{{jinjaModelName}}::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::{{jinjaModelName}}")
+    .SetParent<Application> ()
+    .SetGroupName("Applications")
+    .AddConstructor<{{jinjaModelName}}> ()
+    .AddAttribute ("Remote",
+                   "The address of the machine we want to send a {{jinjaModelName}} packet to.",
+                   Ipv4AddressValue (),
+                   MakeIpv4AddressAccessor (&{{jinjaModelName}}::m_remote),
+                   MakeIpv4AddressChecker ())
+    .AddAttribute ("Verbose",
+                   "Produce usual output.",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&{{jinjaModelName}}::m_verbose),
+                   MakeBooleanChecker ())
+    .AddAttribute ("Interval", "Wait  interval  seconds between sending each packet.",
+                   TimeValue (Seconds (1)),
+                   MakeTimeAccessor (&{{jinjaModelName}}::m_interval),
+                   MakeTimeChecker ())
+    .AddAttribute ("Size", "The number of data bytes to be sent.",
+                   UintegerValue (56),
+                   MakeUintegerAccessor (&{{jinjaModelName}}::m_size),
+                   MakeUintegerChecker<uint32_t> (16))
+    .AddAttribute ("Instantiator",
+                   "Will initiate communication if true.",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&{{jinjaModelName}}::m_instantiator),
+                   MakeBooleanChecker ())
+    .AddAttribute ("ID", "The ID associated with this model instance.",
+                   UintegerValue (0),
+                   MakeUintegerAccessor (&{{jinjaModelName}}::m_id),
+                   MakeUintegerChecker<uint32_t> ())
+    .AddTraceSource ("Rtt",
+                     "The rtt calculated by the ping.",
+                     MakeTraceSourceAccessor (&{{jinjaModelName}}::m_traceRtt),
+                     "ns3::Time::TracedCallback");
+  ;
+  return tid;
+}
+
+{{jinjaModelName}}::{{jinjaModelName}} ()
+  : m_interval (Seconds (1)),
+    m_size ({{jinjaPacketSize}}),
+    m_socket (0),
+    m_seq (0),
+    m_verbose (false),
+    m_recv (0),
+    m_instantiator (true)
+{
+
+  NS_LOG_FUNCTION (this);
+
+}
+{{jinjaModelName}}::~{{jinjaModelName}} ()
+{
+  NS_LOG_FUNCTION (this);
+}
+
+void
+{{jinjaModelName}}::DoDispose (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_socket = 0;
+  Application::DoDispose ();
+}
+
+uint32_t
+{{jinjaModelName}}::GetApplicationId (void) const
+{
+  NS_LOG_FUNCTION (this);
+  Ptr<Node> node = GetNode ();
+  for (uint32_t i = 0; i < node->GetNApplications (); ++i)
+    {
+      if (node->GetApplication (i) == this)
+        {
+          return i;
+        }
+    }
+  NS_ASSERT_MSG (false, "forgot to add application to node");
+  return 0; // quiet compiler
+}
+
+void
+{{jinjaModelName}}::Receive (Ptr<Socket> socket)
+{
+  NS_LOG_FUNCTION (this << socket);
+  while (m_socket->GetRxAvailable () > 0)
+    {
+      Address from;
+      Ptr<Packet> p = m_socket->RecvFrom (0xffffffff, 0, from);
+      int inferredPacketType = -1;
+      NS_LOG_DEBUG ("recv " << p->GetSize () << " bytes");
+      //NS_ASSERT (InetSocketAddress::IsMatchingType (from));
+      //InetSocketAddress realFrom = InetSocketAddress::ConvertFrom (from);
+      //NS_ASSERT (realFrom.GetPort () == 1); // protocol should be icmp.
+      {% block headerRemove %}
+      Ipv4Header ipv4;
+      p->RemoveHeader (ipv4);
+      {% endblock %}
+      uint32_t recvSize = p->GetSize ();
+      unsigned char data[p->GetSize()];
+      p->CopyData(data,p->GetSize());
+      //{{todo}} need to determine which message was received
+      {{jinjaModelName}}PacketType* myTypeRecv;
+      for (unsigned i = 0; i< {{jinjaModelName}}PacketFactory::num_types; i++)
+      {
+		myTypeRecv = {{jinjaModelName}}PacketFactory::createPacketType(i);
+		//cout << "NODE " << m_id << ":Testing: " << myTypeRecv->GetTypeId() << endl;
+		if (myTypeRecv->isPacketType(data, p->GetSize()) == 1.0)
+		{
+			inferredPacketType = myTypeRecv->GetTypeId();
+			//cout << "NODE " << m_id << ": confidence 1, id is: " << inferredPacketType << endl;
+			break;
+		}
+	  }
+	  cout << endl;
+      cout << "NODE " << m_id << ": received " << recvSize << " payload bytes inferred to be packet type: " << inferredPacketType << std::endl;
+
+      //Here we query the state machine
+      vector<int> states = sm->getNextState(inferredPacketType);
+
+	  if (states.size() == 0)
+	  {
+	     cout << "NODE " << m_id << ": " << "no more states in state machine" << endl;
+	  }
+	  else
+	  {
+		cout << "NODE " << m_id << ": " <<  "potential next transitions: " << endl;
+		for (unsigned i=0; i<states.size(); i++)
+			cout << "NODE " << m_id << ": " << states[i] << endl;
+		cout << "NODE " << m_id << ": "<< " generating message type: " << states[0] << std::endl;
+
+		{{jinjaModelName}}PacketType* myTypeSend;
+		myTypeSend = {{jinjaModelName}}PacketFactory::createPacketType(states[0]);
+
+		cout << "NODE " << m_id << ": "<< " sent message to: " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " Message Type: " << myTypeSend->GetTypeId() << std::endl;
+		socket->SendTo (myTypeSend->getPacket(), 0, from);
+
+		states = sm->getNextState(myTypeSend->GetTypeId());
+		cout << "NODE " << m_id << ": " <<  "potential next transitions: " << endl;
+		for (unsigned i=0; i<states.size(); i++)
+			cout << "NODE " << m_id << ": " << states[i] << endl;
+	  }
+     }
+}
+
+void
+{{jinjaModelName}}::Send ()
+{
+  NS_LOG_FUNCTION (this);
+  //call a type constructor:
+
+  {{jinjaModelName}}PacketType* myTypeSend;
+  myTypeSend = {{jinjaModelName}}PacketFactory::createPacketType(0);
+
+  m_socket->Send (myTypeSend->getPacket(), 1);
+  m_next = Simulator::Schedule (m_interval, &{{jinjaModelName}}::Send, this);
+  cout << "NODE " << m_id << ": {{jinjaModelName}} sent packet to " << m_remote << " MessageType: " << myTypeSend->GetTypeId() << endl;
+
+  vector<int> states = sm->getNextState(0);
+  if (states.size() == 0)
+  {
+	     cout << "NODE " << m_id << ": " << "no more states in state machine" << endl;
+  }
+  else
+  {
+	cout << "NODE " << m_id << ": "<< "potential next transitions: " << endl;
+	for (unsigned i=0; i<states.size(); i++)
+		cout << "NODE " << m_id << ": "<<  states[i] << endl;
+  }
+}
+
+void
+{{jinjaModelName}}::StartApplication (void)
+{
+  {% block createSocket %}
+
+  NS_LOG_FUNCTION (this);
+
+  m_started = Simulator::Now ();
+  m_socket = Socket::CreateSocket (GetNode (), TypeId::LookupByName ("ns3::Ipv4RawSocketFactory"));
+  NS_ASSERT (m_socket != 0);
+  m_socket->SetAttribute ("Protocol", UintegerValue (1)); // {{todo}} icmp=1, tcp=6, ipv4hop=0, udp=17
+  m_socket->SetRecvCallback (MakeCallback (&{{jinjaModelName}}::Receive, this));
+  InetSocketAddress src = InetSocketAddress (Ipv4Address::GetAny (), 0);
+  int status;
+  status = m_socket->Bind (src);
+  NS_ASSERT (status != -1);
+  InetSocketAddress dst = InetSocketAddress (m_remote, 0);
+  status = m_socket->Connect (dst);
+  NS_ASSERT (status != -1);
+  sm = new {{jinjaModelName}}StateMachine(0);
+  cout << "NODE" << m_id << ": Initializing" << endl;
+  if (m_instantiator)
+  {
+     cout << "NODE " << m_id << ": Starting instantiator; scheduled to send packets every "<<m_interval << " seconds " << endl;
+     Send ();
+  }
+
+  {% endblock %}
+}
+void
+{{jinjaModelName}}::StopApplication (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_next.Cancel ();
+  m_socket->Close ();
+}
+
+
+} // namespace ns3

@@ -1,0 +1,110 @@
+#!/usr/bin/python
+#Creates a file containing packet type sequences from an input field data file
+import sys
+from lxml import etree
+
+if len(sys.argv) != 3:
+	print "usage: packetTypeExtractory.py <input file> <model name>"
+	print "<input file>"
+	print " -a file containing field data (produced by pdmlExtractor.py)\n"
+	print "<model name>"
+	print " -a file containing field data (produced by pdmlExtractor.py)\n"
+	print "This program creates two files: "
+	print "packetTypeSequences.txt"
+	print " -this file contains the observed packet type sequences in the input file"
+	print "packetTypeMapping.xml"
+	print " -this file contains the mappings from numerical packet types to the unique values used as identify a unique packet type"
+	sys.exit(-1) 
+
+TYPE_IDENTIFIERS = ["Type", "type", "Message Type", "message type", "Command", "command", "GET", "POST", "NOTIFY"]
+TYPE_FIELDS = ["macsrc","macdst","ipsrc","ipdst","protoName"]
+FIELD_FIELDS = ["mname", "mshowname", "msize", "mpos", "mshow", "mvocab", "mentropy"]
+
+typeMappings = {}
+typeSequences = []
+numTypesIdentified = 0
+
+inputFile = open(str(sys.argv[1]), 'r')
+modelName = sys.argv[2]
+outputFilename = 'packetTypeSequences.txt'
+
+packetFields = []
+packetLines = ""
+#iterate through each packet
+while 1:
+	line = inputFile.readline()
+	if not line:
+		break
+	packetLines=""
+	#store all of the lines for a packet in the packetLines variable
+	while line.strip() != "":
+			packetLines += line
+			line = inputFile.readline()
+	if len(packetLines) < 2:
+		break
+	#the first line should hold id information (src/dst, proto, etc.)
+	packetLines = packetLines.splitlines()
+	#finally we create a variable to hold the fields in the packet
+	fields = [] 
+	#this will be used as a 'key' to the type mapping dictionary
+	idData = packetLines[0].split(";")
+	for packetLine in packetLines[1:]:
+		#process the packet's lines:
+		#split the line to get the field data (including metadata):
+		fieldData = packetLine.split(";")
+		#need to further split by : to get the field values:
+		#check to see if the first item is a type field:
+		splitLineType = fieldData[0].split(":")
+		if len(splitLineType) > 1:
+			#check if the line is a type identifier
+			if splitLineType[0] in TYPE_IDENTIFIERS:
+				#create the tuple that consists of all items in the 
+				#first line of packetLines along with the type number
+				idData.append(splitLineType[1])
+				dataItem = tuple(idData)
+				#create a mapping if it doesn't exist yet:
+				if dataItem not in typeMappings:
+					typeMappings[dataItem] = numTypesIdentified
+					numTypesIdentified+=1
+				#append this type mapping to the sequence array
+				typeSequences.append(typeMappings[dataItem])
+		####split each by : to get field data and append all into the field list as tuples
+		#(a,b,c,d,e,f), (a,b,c,d,e,f), etc.
+		
+		packetFields.append(fieldData)
+	print packetFields
+	sys.exit(0)
+	
+	
+#			fields.append(
+#			splitLineType[0] in FIELD_FIELDS
+				
+#close the input file:
+inputFile.close()
+
+#print an error statement if no types were found:
+if numTypesIdentified == 0:
+	print "No types found in input file!"
+	exit
+
+#write to the output file and to stdout
+out = open(outputFilename, 'w')
+for i in typeSequences:
+	sys.stdout.write(str(i)+" ")
+	out.write(str(i) + " ")
+sys.stdout.write("\n")
+out.write("\n")
+out.close()
+
+#create the xml tree:
+typeMappingsXML = etree.Element("mapping_list")
+for mapping in typeMappings:
+	mappingElement = etree.SubElement(typeMappingsXML,"mtype", id=str(typeMappings[mapping]))
+	#add each of the items that were used to create the key tuples
+	for i in range(len(TYPE_FIELDS)):
+		mappingElement.set(TYPE_FIELDS[i],mapping[i])
+
+
+outputMappingXML = open('packetTypeMapping.xml','w')
+print etree.tostring(typeMappingsXML,pretty_print='true')
+outputMappingXML.write(etree.tostring(typeMappingsXML,pretty_print='true'))

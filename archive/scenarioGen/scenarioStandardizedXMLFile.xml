@@ -1,0 +1,30 @@
+<network>
+  <node number = '0'>
+     <macsrc>08:00:27:0c:fb:70</macsrc>
+     <flow>
+       <protocol>icmp</protocol>
+       <macdst>52:54:00:12:35:02</macdst>
+       <ipsrc>10.0.2.15</ipsrc>
+       <ipdst>216.58.216.14</ipdst>
+       <time>
+          <first>2015-08-07 23:32:57:077218</first>
+          <last>2015-08-07 23:33:07:101087</last>
+          <count>11</count>
+       </time>
+     </flow>
+  </node>
+  <node number = '1'>
+     <macsrc>52:54:00:12:35:02</macsrc>
+     <flow>
+       <protocol>icmp</protocol>
+       <macdst>08:00:27:0c:fb:70</macdst>
+       <ipsrc>216.58.216.14</ipsrc>
+       <ipdst>10.0.2.15</ipdst>
+       <time>
+          <first>2015-08-07 23:32:57:106899</first>
+          <last>2015-08-07 23:33:07:136994</last>
+          <count>11</count>
+       </time>
+     </flow>
+  </node>
+</network>

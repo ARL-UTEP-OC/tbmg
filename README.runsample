@@ -1,0 +1,63 @@
+#This will compile the code and generate the ns-3 and scapy models/protocols
+
+##############ICMP (stacked on IP)###########################
+python modelGenerator.py sampleConfigs/icmp.xml
+
+#This will run python in the directory where the scapy code resides
+cd scapytest/scapy/
+python
+
+#Run the following in a window and then start a ping to localhost; one packet will be processed and then quit
+#from model.scapytestClient import *
+#a = scapytestClient("127.0.0.1", "127.0.0.1")
+#a.start()
+
+#This shows how to send a packet of a particular (auto-generated) type
+from model.scapytestType8 import *
+a = IP(dst="127.0.0.1", proto=1)/scapytestType8()
+send(a)
+
+##############PROTOX (stacked on TCP)###########################
+#for the ProtoX sample navigate to protoxtest/scapy and substitute the above with:
+python modelGenerator.py sampleConfigs/protox.xml
+
+#This will run python in the directory where the scapy code resides
+cd protoxtest/scapy/
+python
+
+from model.protoxtestType48 import *
+a = IP(dst="127.0.0.1")/TCP(dport=9100, flags="S")/protoxtestType48()
+send(a)
+
+###############PROTOX including TCP Handshake and packet send#####################
+###This is a temporary solution. In the future a pseudo stack in scapy with MAC, and including ARP, etc.
+#see https://stackoverflow.com/questions/13215135/how-to-make-all-outgoing-rst-drop#Disable auto-OS RST
+#block outgoing RST (otherwise OS will send these when a SYN/ACK is encountered)
+iptables -A OUTPUT -p tcp -d 192.168.1.27 -s 10.0.2.15 --dport 9100 --tcp-flags ALL RST -j DROP
+
+#generate the model
+python modelGenerator.py sampleConfigs/protox.xml
+
+#This will run python in the directory where the scapy code resides
+cd protoxtest/scapy/
+python
+
+#import our packet type
+from model.protoxtestType48 import *
+
+#set source port (doesn't really matter)
+sport = random.randint(1024, 65535)
+
+#SYN
+ip = IP(src="10.0.2.15", dst="192.168.1.27")
+SYN = TCP(sport=sport, dport=9100, flags="S", seq=12345)
+SYNACK=sr1(ip/SYN)
+
+#ACK
+my_ack = SYNACK.seq+1
+ACK=TCP(sport = sport, dport=9100, flags="A", seq=12346, ack=my_ack)
+send(ip/ACK)
+
+#PSH, ACK (essentially, our packet)
+protox_packet = TCP(sport=sport, dport=9100, flags="PA", seq=12346, ack=my_ack)/protoxtestType48()
+send(ip/protox_packet)

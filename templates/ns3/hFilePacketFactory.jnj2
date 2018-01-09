@@ -1,0 +1,38 @@
+//This file was generated automatically, please do not edit unless you know exactly what you're doing.
+#ifndef {{jinjaModelName|upper}}_PACKET_FACTORY_H
+#define {{jinjaModelName|upper}}_PACKET_FACTORY_H
+
+//now include the packet types associated with this model:
+{%- for type in jinjaPacketTypes %}
+#include "ns3/{{jinjaModelName}}-type{{type}}.h"
+{%- endfor %}
+#include "ns3/log.h"
+#include "{{jinjaModelName}}-PacketType.h"
+
+namespace ns3 {
+/**
+ * \ingroup {{jinjaModelName}}PacketFactory
+ * \brief 
+ *
+ * Note: 
+ */
+class {{jinjaModelName}}PacketFactory
+{
+public:
+
+enum PacketTypes{
+{% set count = 0 %}
+{%- for type in jinjaPacketTypes %}
+      {{jinjaModelName}}_type{{count}} = {{count}},
+{%- set count = count + 1 %}
+{%- endfor %}
+	   num_types
+};
+	static {{jinjaModelName}}PacketType* createPacketType (int packetType);
+
+private:
+	virtual void DoDispose (void);
+};
+}
+
+#endif //{{jinjaModelName|upper}}_PACKET_FACTORY_H

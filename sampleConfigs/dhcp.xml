@@ -1,0 +1,47 @@
+<xml>
+    <model-basis>
+        <proto-name>
+            bootp
+        </proto-name>
+        <path-to-pcap>
+            sampleConfigs/captures/dhcp.pcap
+        </path-to-pcap>
+        <keyword>
+            type:
+        </keyword>
+        <multi-inclusive-layers>
+            false
+        </multi-inclusive-layers>
+        <extracted-fields>
+            <layer name="eth">
+                <field xml-name="mac-src" pdml-name="src" />
+                <field xml-name="mac-dst" pdml-name="dst" />
+            </layer>
+            <layer name="ip">
+                <field xml-name="ip-src" pdml-name="src" />
+                <field xml-name="ip-dst" pdml-name="dst" />
+            </layer>
+            <layer name="udp">
+                <field pdml-name="srcport" xml-name="sport" />
+                <field pdml-name="dstport" xml-name="dport" />
+            </layer>
+        </extracted-fields>
+      </model-basis>
+    <model-generation>
+        <model-name>dhcptest</model-name>
+		<network-layer>
+			IPv4
+		</network-layer>
+		<transport-layer>
+			UDP
+		</transport-layer>
+    </model-generation>
+    <scenario-generation>
+        <remote_ip/>
+        <local_ip/>
+        <gateway/>
+        <hil>
+            False
+        </hil>
+    </scenario-generation>
+</xml>

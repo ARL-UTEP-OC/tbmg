@@ -1,0 +1,52 @@
+#!/usr/bin/python
+# -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+#  create a {{jinjaModelName}} Type: {{jinjaPacketTypeUnique[0][1]}}
+from scapy.all import *
+
+class {{jinjaModelName}}Type{{jinjaPacketTypeUnique[0][1]}}(Packet):
+    name='{{jinjaModelName}}Type{{jinjaPacketTypeUnique[0][1]}}'
+    fields_desc = [
+    {%- set count = 0 %}
+    {%- set size = jinjaFieldNames|length %}
+    {%- for fieldName in jinjaFieldNames %}
+        {%- if fieldName[2] == '1' %}
+        ByteField("{{fieldName[1]}}", {{fieldName[4]}}),
+        {%- elif fieldName[2] == '2' %}
+        XShortField("{{fieldName[1]}}", {{fieldName[4]}}),
+        {%- elif fieldName[2] == '4' %}
+        XIntField("{{fieldName[1]}}", {{fieldName[4]}}), 
+        {%- elif fieldName[2] == '8' %}
+        XLongField("{{fieldName[1]}}", {{fieldName[4]}}), 
+        {%- elif size != 1 %}
+        StrField("{{fieldName[1]}}", "{{fieldName[4]|replace("0x","\\x")| replace(" ", "")}}"),      
+        {%- else %}
+        StrField("{{fieldName[1]}}", "{{fieldName[4]|replace("0x","\\x")| replace(" ", "")}}") 
+        {%- endif %}
+        {%- set count = count + fieldName[2]|int %}
+        {%- set size = size - 1 %}
+    {%- endfor %}
+    ]
+    #{{todo}}
+    #def __init__(self):
+    #    self.name = '{{jinjaModelName}}{{jinjaPacketType}}'
+    #    self.protocol_id = getattr(IP_PROTOS, '{{jinjaLayerData["protoName"]|lower}}')
+
+    #{{todo}}
+    #def buildPacket(self, s, d):
+    #    '''Construct packet to send.'''
+        #s = self.strIP('
+        #{%- if jinjaRoutingData[1] is not none -%}
+        #{{jinjaRoutingData[1]}}
+        #{%- else -%}
+        #127.0.0.1
+        #{%- endif -%}
+        #')
+        #d = self.strIP('
+        #{%- if jinjaRoutingData[0] is not none -%}
+        #{{jinjaRoutingData[0]}}
+        #{%- else -%}
+        #127.0.0.1
+        #{%- endif -%}
+        #')
+    #    return IP(src=s, dst=d)/{{jinjaModelName}}{{jinjaPacketType}}()
+      
