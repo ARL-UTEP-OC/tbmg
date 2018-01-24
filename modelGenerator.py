@@ -9,6 +9,7 @@ from vocabularyExtractor.fieldVocab import extractVocab
 from grammarGen.Grammar import GrammarGen
 from modelFileGen.Generator import generateModels
 
+
 import settings as s
 from os.path import join, exists, isfile
 from distutils.dir_util import mkpath
@@ -18,9 +19,9 @@ from utils import *
 # Archive Decompression
 #---------------------------------------------------------------------------------------------------
 def unpackArchives():
-    if (not exists("ns-allinone-3.26")):
-        creationCheck("ns-allinone-3.26.tar.bz2")
-        pid = subprocess.call(['tar', 'jxvf', 'ns-allinone-3.26.tar.bz2'])
+    #if (not exists("ns-allinone-3.26")):
+    #    creationCheck("ns-allinone-3.26.tar.bz2")
+    #    pid = subprocess.call(['tar', 'jxvf', 'ns-allinone-3.26.tar.bz2'])
     
     if (not exists("prospex")):
         creationCheck("prospex.tgz")
@@ -84,6 +85,10 @@ def buildStateMachine(model):
     pid = subprocess.Popen(['python', script, s.paths['statemachine']], cwd=s.paths['prospex'])
     pid.wait()
 
+###########Added to overide Exbar#############
+def buildStandardizedFile(model):
+	extractVocab(model)
+	creationCheck(join(s.paths['model'], "modelStandardizedXMLFile.xml"))
 
 # Setup new NS3 model
 #---------------------------------------------------------------------------------------------------
@@ -186,10 +191,11 @@ def main(xmlConfig):
     
     buildModelStructure()
     extractPackets(c["pcapFilename"], c["protoName"], c["modelName"], c["keyword"], c["fields"], c["dissectorFilename"])
-    buildStateMachine(c["modelName"])
+    #buildStateMachine(c["modelName"])#uncomment
+    buildStandardizedFile(c["modelName"])#comment this
 #    setupNS3Model(c["modelName"])
 #    buildNS3Grammar(c["modelName"])
-    buildScapyGrammar(c["modelName"])
+    #buildScapyGrammar(c["modelName"])#uncomment
     buildModels(c["modelName"], c["transLayer"], {"remote": c["remote"], "local": c["local"], "gateway": c["gateway"]})
 #    runSimulation(c["modelName"], c["hil"])
 #    saveNS3Results(c["modelName"])
