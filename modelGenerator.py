@@ -85,11 +85,6 @@ def buildStateMachine(model):
     pid = subprocess.Popen(['python', script, s.paths['statemachine']], cwd=s.paths['prospex'])
     pid.wait()
 
-###########Added to overide Exbar#############
-def buildStandardizedFile(model):
-	extractVocab(model)
-	creationCheck(join(s.paths['model'], "modelStandardizedXMLFile.xml"))
-
 # Setup new NS3 model
 #---------------------------------------------------------------------------------------------------
 def setupNS3Model(model):
@@ -191,11 +186,10 @@ def main(xmlConfig):
     
     buildModelStructure()
     extractPackets(c["pcapFilename"], c["protoName"], c["modelName"], c["keyword"], c["fields"], c["dissectorFilename"])
-    #buildStateMachine(c["modelName"])#uncomment
-    buildStandardizedFile(c["modelName"])#comment this
+    buildStateMachine(c["modelName"])#uncomment
 #    setupNS3Model(c["modelName"])
 #    buildNS3Grammar(c["modelName"])
-    #buildScapyGrammar(c["modelName"])#uncomment
+    buildScapyGrammar(c["modelName"])
     buildModels(c["modelName"], c["transLayer"], {"remote": c["remote"], "local": c["local"], "gateway": c["gateway"]})
 #    runSimulation(c["modelName"], c["hil"])
 #    saveNS3Results(c["modelName"])
