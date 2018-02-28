@@ -143,7 +143,8 @@ class scapyCustomizerTBMG(object):
 				continue
 		
 		for t in ["TBMG_PRE","TBMG","TBMG._FIELDS_"]:
-			del tagged[t]
+			if t in tagged:
+				del tagged[t]
 		for t in ["TBMG_PRE._GENERAL_","TBMG._GENERAL_","TBMG._GENERAL_FIRST_"]:
 			if t not in tagged:
 				tagged[t] = []
@@ -429,6 +430,8 @@ variables available:
   synthfields   - OrderedDict() of the fields after modification, or any other information between packet calculations
   lastsynthfields - the synthfields from last time the packet was calculated
   actualsend    - True when called by send() via TBMG, False when called by show2() (or from send() outside of TBMG)
+  
+NOTICE: Python indentation is 4 spaces for these code snippets
 		""";
 		
 		selhelp = """

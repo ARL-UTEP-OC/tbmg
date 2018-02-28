@@ -53,7 +53,7 @@ class whb_icmpType8(Packet):
 # **_GENERAL_FIRST_...
         synthfields['seeds'] = random.randint(100,999)
         
-        print "test4"
+        print "test5"
 # .._GENERAL_FIRST_***
 
 # **_FIELDS_...

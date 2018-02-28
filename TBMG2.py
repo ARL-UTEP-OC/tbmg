@@ -1,3 +1,4 @@
+#!/usr/bin/python2
 from Tkinter import *
 from tkFileDialog import askopenfilename
 import tkMessageBox
