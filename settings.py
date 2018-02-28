@@ -10,7 +10,7 @@ def loadSettings(model):
     global paths
     
     c = ConfigParser.SafeConfigParser()
-    f = join(getcwd(), model, 'config.ini')
+    f = join(getcwd(), "models", model, 'config.ini')
     c.read(f)
    
     versions = parseVersions(f, c)
@@ -115,7 +115,7 @@ def createVersions(f, c):
 
 def createPaths(f, c, n):
     base = getcwd()
-    modelpath = join(base, n)
+    modelpath = join(base, "models", n)
     
     types = ['ns3', 'scapy']
     

@@ -2,12 +2,13 @@
 # Creates a file containing packet type sequences from an input field data file
 import sys
 from bs4 import BeautifulSoup
+import os
 
 def extractPacketType(modelName, keyword):
-    inputFile = modelName + "/packets.xml"
+    inputFile = os.path.join("models",modelName,"packets.xml")
 
-    outputSequenceFilename = modelName + '/packetTypeSequences.txt'
-    outputPacketsTypesFilename = modelName + '/packetsTypes.xml'
+    outputSequenceFilename = os.path.join("models",modelName,'packetTypeSequences.txt')
+    outputPacketsTypesFilename = os.path.join("models",modelName,'packetsTypes.xml')
     type_specified = False
     if keyword != None:
         TYPE_IDENTIFIERS = keyword

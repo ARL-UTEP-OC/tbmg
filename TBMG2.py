@@ -1,5 +1,6 @@
 from Tkinter import *
 from tkFileDialog import askopenfilename
+import tkMessageBox
 from jinja2 import Template
 from io import BytesIO
 import ttk
@@ -12,6 +13,9 @@ import importlib
 import binascii
 import inspect
 from fieldObject import fieldObj
+from StringIO import StringIO
+from collections import OrderedDict
+from scapyCustomizerTBMG import scapyCustomizerTBMG
 
 class Application(Frame):
     def __init__(self, master):
@@ -56,7 +60,7 @@ class Application(Frame):
         self.createButton = Button(page1, text = "Create", command = self.create)
         self.createButton.grid(row = 10, column = 0, sticky = W)
         
-        self.protnames = os.listdir(".")
+        self.protnames = [x for x in os.listdir("./models") if ("__init__.py" not in x)]
         self.existingName = Label(page1, text="Use Existing:")
         self.existingName.grid(row=11, column = 0, sticky = W)
         self.existingvar = StringVar(page1)
@@ -369,11 +373,11 @@ def displayModels(modelname):
 	selectLabel = Label(page2, text="Select Model:", font = "bold")
 	selectLabel.grid(sticky = "W")
 	models = []
-	models = os.listdir(modelname+"/scapy/model/")
+	models = os.listdir(os.path.join("models",modelname,"scapy","model"))
 	modelChosen = StringVar()
 	connectChosen = StringVar()
-	path1 = modelname+"/__init__.py"
-	path2 = modelname+"/scapy/__init__.py"
+	path1 = os.path.join("models",modelname,"__init__.py")
+	path2 = os.path.join("models",modelname,"scapy","__init__.py")
 
 #create required init.py files for importing if not existent
 	open(path1, 'a')
@@ -403,10 +407,12 @@ def displayModels(modelname):
 	#self.tcp = BooleanVar()
         #Checkbutton(page2, text= "Create TCP Connection", variable = self.tcp, command = self.update_text).grid(row =6, column = 0, sticky = W)
 def buildscapyproto(name,modeltype,connecttype):
+	global mod_model, mod_class
+	
 	modelpath = name + "/scapy/"
 	model_strip = modeltype.strip(".py")
 
-	mod_model = importlib.import_module(name+".scapy.model."+model_strip)
+	mod_model = importlib.import_module("models."+name+".scapy.model."+model_strip)
 	mod_class = getattr(mod_model,model_strip)
 	protLayer = mod_class()
 	if connecttype == "RAW":
@@ -422,8 +428,9 @@ def buildscapyproto(name,modeltype,connecttype):
 	
 
 				
-def makeFieldObjects(packet):
+def makeFieldObjects(packet,basemodelname):
 	global fieldObjectsArray
+	global BTNEditedBG, BTNNotEditedBG
 	fieldObjectsArray = []
 	lyrs= []
 	lyrs = findLayers(packet)
@@ -433,21 +440,237 @@ def makeFieldObjects(packet):
 	for lyr in lyrs:
 		#print layer
 		layer = packet.getlayer(lyr)
+		
+		if basemodelname in lyr:
+			editor = scapyCustomizerTBMG.scapyCustomizerTBMG(os.path.join("models",basemodelname,"scapy","model",lyr+".py"))
+		else:
+			editor = None
+		
 		for fdesc in layer.fields_desc:
-
+			
 				field_value = ifhex((getattr(layer,fdesc.name)))
 				#print field_value
 				if field_value == None:
 					field_value = "None"
+					
+				hasedits = (editor.hasedits(fdesc.name) if editor is not None else False)
+					
 				fieldob = fieldObj(fdesc.name, field_value, lyr)
 				fieldob.setTKName(Label(page3,text=fdesc.name))
 				default_value = StringVar(page3, value=field_value)
+				
 				fieldob.setTKValue(Entry(page3, textvariable=default_value))
+				fieldob.setTKfieldNoneBTN(Button(page3, text='N', padx=0,pady=0, command=lambda fo=fieldob: updateGuiFields(fo,None) ))
+				fieldob.setTKfieldDefaultBTN(Button(page3, text='D', padx=0,pady=0, command=lambda fo=fieldob,fv=field_value: updateGuiFields(fo,fv)  ))
+				fieldob.setTKSynth(Entry(page3, state="readonly"))
+				if (lyr == 'TCP' or lyr == 'UDP' or lyr == 'IP'):
+					fieldob.setTKAdvEditBTN(Label(page3,text=""))
+				else:
+					btnedit = Button(page3,text="Edit",pady=0,command=lambda fob=fieldob,b=basemodelname:AdvEdit(fob,b))
+					btnedit.config(background=(BTNEditedBG if hasedits else BTNNotEditedBG))
+					fieldob.setTKAdvEditBTN(btnedit)
 				#print "field objects made"
 				#fieldob.toString()
 				fieldObjectsArray.append(fieldob)
 		count += 1
 
+def AdvEdit(fieldob,basemodelname):
+	nb.tab(page3_5,state=NORMAL)
+	
+	for wid in page3_5.winfo_children():
+		wid.destroy()
+	
+	layer = fieldob.layer
+	field = fieldob.name
+	editor = scapyCustomizerTBMG.scapyCustomizerTBMG(os.path.join("models",basemodelname,"scapy","model",layer+".py"))
+	edits = editor.getedits(field)
+	options = editor.getoptions(field)
+	edit_args = edits['LOGIC'].split(" ")
+
+	controlpanel = Frame(page3_5)
+	controlpanel.grid(row=0,column=0,rowspan=20,sticky=N)
+	
+	layerlabel = Label(controlpanel,text="Layer:")
+	layerlabel.grid(row=0,column=0,sticky=W)
+	layerdisp  = Label(controlpanel,text=layer)
+	layerdisp.grid(row=0,column=1,sticky=W)
+	
+	fieldlabel = Label(controlpanel,text="Field:")
+	fieldlabel.grid(row=1,column=0,sticky=W)
+	fielddisp  = Label(controlpanel,text=field)
+	fielddisp.grid(row=1,column=1,sticky=W)
+
+	valuepanel = Frame(page3_5)
+	valuepanel.grid(row=0,column=5,rowspan=20,sticky=N)
+	
+	colsep = Frame(page3_5,width=25)
+	colsep.grid(row=0,column=4)
+	
+	vprow = 0
+	rawlabel = Label(valuepanel,text="Current RAW value(s):")
+	rawlabel.grid(row=vprow,column=0,columnspan=2,sticky=W)
+	vprow += 1
+	rowdisp = Label(valuepanel,text=edits['LOGIC'])
+	rowdisp.grid(row=vprow,column=0,columnspan=2,sticky=W)
+	vprow += 1
+
+	if '_AFTER' in options:
+		runlabel = Label(valuepanel,text=options['_AFTER']['title']+":")
+		runlabel.grid(row=vprow,column=0,sticky=W)
+		options['_AFTER']['_var'] = StringVar()
+		options['_AFTER']['_var'].set(edits['AFTER'])
+		options['_AFTER']['_field'] = OptionMenu(valuepanel,options['_AFTER']['_var'],*(options['_AFTER']['source']))
+		options['_AFTER']['_field'].configure(pady=0)
+		options['_AFTER']['_field'].grid(row=vprow,column=1,sticky=W)
+		vprow += 1
+
+	options["_chosen"] = StringVar()
+	options["_chosen"].set(edit_args[0])
+
+	for i in options:
+		if i[0:1] == "_":
+			continue
+		
+		options[i]['_spacer'] = Label(valuepanel,text=" ")
+		options[i]['_spacer'].grid(row=vprow,column=0,columnspan=2)
+		vprow += 1
+		
+		options[i]['_sel'] = Radiobutton(valuepanel,text=i,variable=options["_chosen"],value=i)
+		options[i]['_sel'].grid(row=vprow,column=0,columnspan=4,sticky=W)
+		vprow += 1
+		
+		options[i]['_frame'] = Frame(valuepanel)
+		options[i]['_frame'].grid(row=vprow,column=0,columnspan=5,sticky=W)
+		vprow += 1
+
+		orow = 0
+		options[i]['_help'] = Button(options[i]['_frame'],text='?',pady=0,command=lambda t=i,h=options[i]['help']:alertpop(t,h))
+		options[i]['_help'].grid(row=orow,column=0,sticky=W)
+		options[i]['_helplabel'] = Label(options[i]['_frame'],text='About '+i)
+		options[i]['_helplabel'].grid(row=orow,column=1,sticky=W)
+		orow += 1
+		for o in options[i]:
+			if o[0:1] == "_" or o in ['help']:
+				continue
+			
+			options[i][o]['_label'] = Label(options[i]['_frame'],text=options[i][o]['title'])
+			options[i][o]['_label'].grid(row=orow,column=1,sticky=W)
+			
+			if 'help' in options[i][o]:
+				options[i][o]['_help'] = Button(options[i]['_frame'],text='?',pady=0,command=lambda t=i+" "+options[i][o]['title'],h=options[i][o]['help']:alertpop(t,h))
+				options[i][o]['_help'].grid(row=orow,column=0)
+			
+			value = str(""+str(options[i][o]['default']))
+			if edit_args[0] == i:
+				if o in edits:
+					value = edits[o]
+				if 'arg' in o:
+					arg = int(o[3:])
+					if len(edit_args) > arg:
+						value = edit_args[arg]
+
+			if options[i][o]['type'] == 'select':
+				options[i][o]['_selvar'] = StringVar()
+				options[i][o]['_selvar'].set(value)
+				options[i][o]['_field'] = OptionMenu(options[i]['_frame'],options[i][o]['_selvar'],options[i][o]['_selvar'].get(),*(options[i][o]['source']))
+				options[i][o]['_field'].configure(pady=0)
+				options[i][o]['_field'].grid(row=orow,column=2,sticky=W)
+				options[i][o]['_get'] = lambda v=options[i][o]['_selvar']: v.get()
+				orow += 1
+			elif options[i][o]['type'] == 'textarea':
+				options[i][o]['_field'] = Text(options[i]['_frame'],width=40,height=5,wrap=NONE)
+				options[i][o]['_field'].grid(row=orow,column=2,sticky=W)
+				options[i][o]['_scrolly'] = Scrollbar(options[i]['_frame'],command=options[i][o]['_field'].yview)
+				options[i][o]['_scrolly'].grid(row=orow,column=3,sticky=N+S+W)
+				orow += 1
+				options[i][o]['_scrollx'] = Scrollbar(options[i]['_frame'],command=options[i][o]['_field'].xview,orient=HORIZONTAL)
+				options[i][o]['_scrollx'].grid(row=orow,column=2,sticky=N+E+W)
+				orow += 1
+				options[i][o]['_field'].configure(yscrollcommand=options[i][o]['_scrolly'].set,xscrollcommand=options[i][o]['_scrollx'].set)
+				options[i][o]['_field'].insert(END,str(value))
+				options[i][o]['_get'] = lambda f=options[i][o]['_field']: f.get(1.0,END)
+			elif options[i][o]['type'] == 'text':
+				options[i][o]['_textvar'] = StringVar()
+				options[i][o]['_textvar'].set(value)
+				options[i][o]['_field'] = Entry(options[i]['_frame'],textvariable=options[i][o]['_textvar'])
+				options[i][o]['_field'].grid(row=orow,column=2,sticky=W)
+				orow += 1
+				options[i][o]['_get'] = lambda v=options[i][o]['_textvar']: v.get()
+			else:
+				print "ERROR, unknown field type: "+options[i][o]['type']
+				return
+
+	savebtn = Button(controlpanel,text="Save and Close",command=lambda fob=fieldob,b=basemodelname,o=options: SaveAdvEdit(fob,b,o))
+	savebtn.grid(row=30,column=0,columnspan=2,sticky=S)
+	cancelbtn = Button(controlpanel,text="Close without saving",command=CloseAdvEdit)
+	cancelbtn.grid(row=31,column=0,columnspan=2,sticky=S)	
+			
+	nb.select(page3_5)
+
+def alertpop(title,mlinestring):
+	print title
+	print mlinestring
+	tkMessageBox.showinfo(title,mlinestring)
+
+def SaveAdvEdit(fieldob,basemodelname,options):
+	global BTNEditedBG, BTNNotEditedBG
+
+	layer = fieldob.layer
+	field = fieldob.name
+	editor = scapyCustomizerTBMG.scapyCustomizerTBMG(os.path.join("models",basemodelname,"scapy","model",layer+".py"))
+
+	#TODO: save
+	edits = {}
+	if options['_chosen'] != "":
+		i = options['_chosen'].get()
+		edit_args = [i]
+		for o in options[i]:
+			if o[0:1] == "_" or "_field" not in options[i][o]:
+				continue
+
+			value = options[i][o]['_get']()
+
+			if "arg" in o:
+				a = int(o[3:])
+				while len(edit_args) < a+1:
+					edit_args.append("")
+				edit_args[int(o[3:])] = value
+			else:
+				edits[o] = value
+		edits["LOGIC"] = " ".join(edit_args)
+
+	if "_AFTER" in options:
+		edits["AFTER"] = options['_AFTER']['_var'].get()
+
+	if "LOGIC" in edits:
+		editor.saveEdits(fieldob.name,edits)
+
+	mods = editor.hasedits(field)
+	fieldob.TKAdvEditBTN.configure(background = BTNEditedBG if mods else BTNNotEditedBG)
+	
+	ReloadProtocol(fieldob.layer)
+	
+	CloseAdvEdit()
+
+def CloseAdvEdit():
+	nb.select(page3)
+	nb.tab(page3_5,state=DISABLED)	
+
+def ReloadProtocol(protoname):
+	global mod_model, mod_class, packet
+
+	#TODO: reload the class, and reinstantiate
+
+	reload(mod_model)
+	mod_class = getattr(mod_model,protoname)
+	
+	sub = packet
+	while type(sub.payload).__name__ != protoname:
+		sub = sub.payload
+	
+	old = sub.payload
+	sub.payload = mod_class()
+	sub.payload.cloner(old)
 
 def findLayers(packet):
 	layerindex = ["IP", "TCP", "UDP"]
@@ -493,45 +716,74 @@ def showmodeldata(name, modeltype, connecttype):
 	show.insert(END, output)
 def modifymodeldata(name, modeltype, connecttype):
 	global fieldObjectsArray, tcpEntry, destEntry, packet
+	global BTNEditedBG,BTNNotEditedBG
 	###clear page 3 screen to update labeling###
 	for child in page3.winfo_children():
 		child.destroy()
 	rowcount = 1
+	protoffset = 5;
 	packet = buildscapyproto(name,modeltype,connecttype)
 	print "before"
 	packet.show()
-	makeFieldObjects(packet)
+	makeFieldObjects(packet,name)
 	
 	lyrs = findLayers(packet)
+	TCProwOffset = 0
 	for layer in lyrs:
-		layerLabel = Label(page3,text=layer, font = "bold")
-		layerLabel.grid(row=rowcount, column = 1, sticky=E)
+		if "TCP" == layer:
+			TCProwOffset = rowcount+1
+		if name in layer:
+			editor = scapyCustomizerTBMG.scapyCustomizerTBMG(os.path.join("models",name,"scapy","model",layer+".py"))
+			fakefieldob = fieldObj('_GENERAL_',0,layer)
+			genedit = Button(page3,text="Edit",command=lambda fb=fakefieldob,b=name: AdvEdit(fb,b) )
+			genedit.configure(pady=0,background=(BTNEditedBG if editor.hasedits("_GENERAL_") else BTNNotEditedBG))
+			genedit.grid(row=rowcount,column=-1+protoffset,sticky=E)
+			fakefieldob.setTKAdvEditBTN(genedit)
+		layerLabel = Label(page3,text="     "+layer+"     ", font = "bold")
+		layerLabel.grid(row=rowcount, column = 0+protoffset, sticky=W )
+		layerLabel.configure(background='#aaaaaa')
 		rowcount += 1
 		for field in fieldObjectsArray:
 			if field.layer==layer:
-				field.TKfieldName.grid(row=rowcount, column=0, sticky=W)
-				field.TKfieldValue.grid(row=rowcount, column =1, sticky=W)
+				field.TKfieldName.grid( row=rowcount, column = 0+protoffset, sticky=W)
+				field.TKfieldValue.grid(row=rowcount, column = 1+protoffset, sticky=W)
+				field.TKfieldNoneBTN.grid(row=rowcount,column= 2+protoffset, sticky=W)
+				field.TKfieldDefaultBTN.grid(row=rowcount,column=3+protoffset,sticky=W)
+				field.TKfieldSynth.grid(row=rowcount, column = 4+protoffset, sticky=W)
+				field.TKAdvEditBTN.grid(row=rowcount, column = -1+protoffset, sticky=E)
 				rowcount += 1
-	updateButton = Button(page3, text = "Update", command = lambda: updatemodeldata2())
-	updateButton.grid(row=rowcount+1, sticky=W)
+				
+	buttonsRoffset = 1 #rowcount
+	buttonsCoffset = 0
+	
+	ButtonsPanelSenders = Frame(page3)
+	ButtonsPanelSenders.grid(row=buttonsRoffset,column=buttonsCoffset,columnspan=protoffset,rowspan=5)
+	#row and column positions were originally for inserting onto page3 grid directly, but still work after being put in a container Frame
+	updateButton = Button(ButtonsPanelSenders, text = "Update", command = lambda: updatemodeldata2())
+	updateButton.grid(row=buttonsRoffset+1, column=0+buttonsCoffset, sticky=S)
+	sendButton = Button(ButtonsPanelSenders, text = "Send", command = lambda: sendpacket2())
+	sendButton.grid(row=buttonsRoffset+2, column=0+buttonsCoffset, sticky=S)	
+	
 	TCP = packet.getlayer('TCP')
+	TCProwOffset = max(buttonsRoffset+2,TCProwOffset)
 	if TCP:
-		tcpButton = Button(page3, text = "Auto TCP Connection", command = lambda: handleTCP())
-		tcpButton.grid(row=rowcount+2,column=0, sticky=W)
-		tcpPortLabel = Label(page3,text="Port:")
-		tcpPortLabel.grid(row=rowcount+2, column=1)
-		tcpEntry = Entry(page3)
-		tcpEntry.grid(row=rowcount+2, column=2)
-		destLabel=Label(page3, text="Dst IP")
-		destLabel.grid(row=rowcount+3, column=1)
-		destEntry = Entry(page3)
-		destEntry.grid(row=rowcount+3, column=2)
-		mantcp = Button(page3, text = "Manual TCP Connection", command = manualTCP)
-		mantcp.grid(row=rowcount+3,sticky=W)
-		etcpButton = Button(page3, text = "End TCP Handshake", command = closeTCP)
-		etcpButton.grid(row=rowcount+4,sticky=W)
-	sendButton = Button(page3, text = "Send", command = lambda: sendpacket2())
-	sendButton.grid(sticky=W)	
+		ButtonsPanelTCP = Frame(page3)
+		ButtonsPanelTCP.grid(row=TCProwOffset,column=buttonsCoffset,columnspan=protoffset,rowspan=10)
+		#row and column positions were originally for inserting onto page3 grid directly, but still work after being put in a container Frame
+		destLabel=Label(ButtonsPanelTCP, text="Dst IP:")
+		destLabel.grid(row=TCProwOffset+0, column=0+buttonsCoffset,sticky=W)
+		destEntry = Entry(ButtonsPanelTCP)
+		destEntry.grid(row=TCProwOffset+1, column=0+buttonsCoffset,sticky=W)
+		tcpPortLabel = Label(ButtonsPanelTCP,text="Port:")
+		tcpPortLabel.grid(row=TCProwOffset+2, column=0+buttonsCoffset,sticky=W)
+		tcpEntry = Entry(ButtonsPanelTCP)
+		tcpEntry.grid(row=TCProwOffset+3, column=0+buttonsCoffset,sticky=W)
+		tcpButton = Button(ButtonsPanelTCP, text = "Auto TCP Connection", command = lambda: handleTCP())
+		tcpButton.grid(row=TCProwOffset+4,column=0+buttonsCoffset, sticky=W)
+		mantcp = Button(ButtonsPanelTCP, text = "Manual TCP Connection", command = manualTCP)
+		mantcp.grid(row=TCProwOffset+5, column=0+buttonsCoffset, sticky=W)
+		etcpButton = Button(ButtonsPanelTCP, text = "End TCP Handshake", command = closeTCP)
+		etcpButton.grid(row=TCProwOffset+6,column=0+buttonsCoffset, sticky=W)
 	nb.select(page3)
 
 	
@@ -567,6 +819,7 @@ def makeIP():
 		
 def sendpacket2():
 	global mystream, handletcp, autoTCP, packet
+	
 	print "###Before TEST###"
 	packet.show()
 	layers = findLayers(packet)
@@ -584,51 +837,95 @@ def sendpacket2():
 	print "###TEST###"
 	print "ipLayer.show = :"
 	ipLayer.show()
-	print "packet.show = :"
+	#print "packet.show = :"
 	#packet.show()
 	if handletcp==True:
 		datapacket = ipLayer/autoTCP/dataLayer
 		print "###showing compiled version of packet"
 		datapacket.show2()
+		
+		FlagActualSend(True)
 		mystream.send(datapacket)##ipLayer
+		FlagActualSend(False)
 		#print "this is what we just sent"
 		#datapacket.show()
 
 	else:
+		FlagActualSend(True)
 		send(packet)
+		FlagActualSend(False)
 	#print "seq sent is: "+str(mystream.ack)
+	
 	print "Following Message Sent"
 	packet.show2()
-	#seq = response.ack
-	#ack=
-	#print "new seq valu: " + str(seq)
-	#updateField("Transport","seq", seq)
 	
-	#TODO, check for "autoupdates" on each layer, and show them on UI next to the field they created a value for
-	lar = packet
-	while lar:
-		autofound = 0
-		layername = ""
-		for i in inspect.getmembers(lar):
-			if i[0] == 'autoupdates':
-				autofound = 1
-			if i[0] == 'name':
-				layername = i[1]
+	autoScrape(packet)
+
+def autoScrape(packet):  #writes sent values to the readonly GUI elements
+	global fieldObjectsArray
+	global SynthMatchBG, SynthDiffBG
+	
+	packetinfo = PacketScraper(packet)
+	
+	for field in fieldObjectsArray:
+		if field.layer not in packetinfo:
+			continue
+		if field.name not in packetinfo[field.layer]:
+			continue
 		
-		if autofound == 0:
-			print "\n\n"+repr(layername)+" has no auto-updates.\n\n"
-		else:
-			print "\n\n"+repr(layername)+" auto-updates: "+repr(lar.autoupdates)+"\n\n"
-			for field in lar.autoupdates:
-				print "auto-update:"+repr(field)+"with "+repr(lar.autoupdates[field])+"\n"
-		lar = lar.payload
-	#getProtoLayerSize()
-	#proto_length = len(datalayer)
-	#print "packet_length: "+ repr(proto_length)		
-	#rebuildIPlayer()
+		resval = packetinfo[field.layer][field.name]
+		setval = field.TKfieldValue.get()
+		same = SafeCompareEqual(setval,resval)
+		
+		field.TKfieldSynth.config(state=NORMAL)
+		field.TKfieldSynth.delete(0,END)
+		field.TKfieldSynth.insert(0,resval)
+		field.TKfieldSynth.config(state="readonly",readonlybackground=(SynthMatchBG if same else SynthDiffBG))
+		
 
-
+def PacketScraper(packet):  #creates an associative collection of values from the packet
 	
+	asobj = OrderedDict()
+	
+	capture = StringIO()
+	old_stdout = sys.stdout
+	sys.stdout = capture
+	packet.show2()
+	sys.stdout = old_stdout
+	asstr = capture.getvalue()
+	
+	layer = ""
+	for line in asstr.split("\n"):
+		if line[0:3] == "###":
+			layer = line[5:-5].strip()
+			asobj[layer] = OrderedDict()
+			continue
+		if "=" not in line:
+			continue
+		field,value = line.split(" = ",1)
+		field = field.strip()
+		asobj[layer][field] = value
+	
+	# orignially wanted to go through packets, and find any "synthfields"
+	# adding attributes nightmare: https://github.com/secdev/scapy/issues/343
+	# so had to settle on using print, and capturing from above text logic
+	
+	return asobj	
+	
+def SafeCompareEqual(a,b):
+	
+	if (a == '' or a == '[]' or a == '{}' or a == '0x0') and (b == '' or b == '[]' or b == '{}' or b == '0x0'):
+		return True
+	
+	if ("'"+str(a)+"'" == b or a == "'"+str(b)+"'"):
+		return True
+	
+	try:
+		return (eval(a)==eval(b))
+	except:
+		return False
+
+
 def handleTCP():
 	global handletcp, srcip, mystream, autoTCP, fieldObjectsArray, packet, mysocket
 	f= None
@@ -686,7 +983,11 @@ def manualTCP():
 	my_ack = SYNACK.seq+1
 	ACK=TCP(sport = sport, dport=dstport, flags="A", seq=12346, ack=my_ack)
 	updateField("Transport","ack", my_ack)
+	
+	FlagActualSend(True)	
 	send(ip/ACK)
+	FlagActualSend(False)
+
 def getField(fieldName):
 		for field in fieldObjectsArray:
 			if field.name == fieldName:
@@ -747,7 +1048,15 @@ def updateGuiFields(field, updateValue):
 	field.TKfieldValue.delete(0, END)
 	field.TKfieldValue.insert(0, field_data)
 	field.setValue = updateValue
-	
+
+def FlagActualSend(onoff):
+	fname = os.path.join(os.path.expanduser("~"),".TBMG_ActualSend")
+	if onoff:
+		with open(fname,"a") as f:
+			os.utime(fname,None)
+	else:
+		os.remove(fname)
+
 packet = None	
 ipLayer = None
 show = None
@@ -761,6 +1070,8 @@ onlyView = False
 mysocket=None
 handletcp = False
 autoTCP = None
+mod_model = None
+mod_class = None
 firstField = 2
 formFields = []
 formdescs = []
@@ -770,6 +1081,10 @@ fieldArray = []
 hidden = True
 root = Tk()
 root.title("Traffic Based Model Generator")
+SynthMatchBG = "#ddddee"
+SynthDiffBG  = "#ffffcc"
+BTNEditedBG = "#eedddd"
+BTNNotEditedBG = None #uses default color
 
 nb = ttk.Notebook(root)
 nb.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
@@ -784,6 +1099,9 @@ nb.add(page2, text='View Model')
 
 page3 = ttk.Frame(nb)
 nb.add(page3, text='Edit Model')
+
+page3_5 = ttk.Frame(nb)
+nb.add(page3_5, text='Adv. Field', state=DISABLED)
 
 page4 = ttk.Frame(nb)
 nb.add(page4, text='Create Dissector')

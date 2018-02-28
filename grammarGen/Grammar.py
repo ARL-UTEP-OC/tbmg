@@ -9,7 +9,8 @@ class GrammarGen:
         self.states = []
         self.transitions = []
         
-        with open(join(s.paths['statemachine'], "labeledstatemachine.dot"), "r") as dotFile:
+        #with open(join(s.paths['statemachine'], "labeledstatemachine.dot"), "r") as dotFile:
+        with open(join(s.paths['statemachine'], "labeledtree.dot"), "r") as dotFile:
             for line in dotFile:
                 if "->" in line:
                     fromState, toState = line.split("->")
@@ -18,7 +19,7 @@ class GrammarGen:
                     transition = (fromState.strip(), toState.strip(), condition.strip())
                     self.transitions.append(transition)
                 if "shape" in line:
-                    nodeName, excess = line.split("[")
+                    nodeName, excess = line.split("[",1)
                     self.states.append(nodeName.strip())
 
     def getStates(self):

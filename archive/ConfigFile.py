@@ -8,7 +8,7 @@ def load(xmlFile):
     global config = parseXMLConfig(xmlFile)
     
     c = ConfigParser.SafeConfigParser()
-    c.read(join(getcwd(), config["modelName"], 'config.ini'))
+    c.read(join(getcwd(), "models", config["modelName"], 'config.ini'))
     global versions = parseVersions(c)
     global paths = parsePaths(c)
 

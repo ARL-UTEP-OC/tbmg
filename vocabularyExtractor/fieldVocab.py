@@ -5,10 +5,11 @@ from lxml import etree
 from bs4 import BeautifulSoup
 from collections import OrderedDict
 import operator
+import os
 
 def extractVocab(modelName):
-    inputPacketsTypesFile = modelName + "/packetsTypes.xml"
-    outputFilename = modelName + '/modelStandardizedXMLFile.xml'
+    inputPacketsTypesFile = os.path.join("models",modelName,"packetsTypes.xml")
+    outputFilename = os.path.join("models",modelName,'modelStandardizedXMLFile.xml')
 
     packetTypeAppearances = 0
     # we want to keep track of fields in order
@@ -26,7 +27,7 @@ def extractVocab(modelName):
             setPacketTypes.add(packetType['type'])
         except:
             continue
-
+            	
     # for each unique packet type
     for packetType in setPacketTypes:
         # iterate through each packet per type:

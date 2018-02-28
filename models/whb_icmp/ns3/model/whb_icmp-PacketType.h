@@ -1,0 +1,100 @@
+//auto-generated
+#ifndef WHB_ICMP_PACKET_TYPE_H
+#define WHB_ICMP_PACKET_TYPE_H
+
+#include <stdio.h>
+#include "ns3/header.h"
+#include "ns3/ptr.h"
+#include <stdint.h>
+#include "ns3/assert.h"
+#include "ns3/log.h"
+#include "ns3/socket.h"
+#include "ns3/uinteger.h"
+#include "ns3/boolean.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/packet.h"
+#include "ns3/trace-source-accessor.h"
+#include "ns3/application.h"
+#include "ns3/traced-callback.h"
+#include "ns3/nstime.h"
+#include "ns3/average.h"
+#include "ns3/simulator.h"
+#include "ns3/ipv4-header.h"
+#include "ns3/ipv4-address.h"
+
+namespace ns3 {
+/**
+ * \ingroup whb_icmpPacketType
+ * \brief 
+ *
+ * Note: 
+ */
+class whb_icmpPacketType
+{
+public:
+
+  virtual int GetTypeId (void) = 0;
+  virtual float isPacketType(unsigned char* candidate, int size) = 0;
+  virtual Ptr<Packet> getPacket(void) = 0;
+  
+    /**
+   * \brief Writes data to buffer in little-endian format.
+   *
+   * Least significant byte of data is at lowest buffer address
+   *
+   * \param buffer the buffer to write to
+   * \param data the data to write
+   */
+  void Write16 (uint8_t *buffer, const uint16_t data);
+
+  /**
+   * \brief Writes data to buffer in little-endian format.
+   *
+   * Least significant byte of data is at lowest buffer address
+   *
+   * \param buffer the buffer to write to
+   * \param data the data to write
+   */
+  void Write32 (uint8_t *buffer, const uint32_t data);
+
+    /**
+   * \brief Writes data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+   void Write64 (uint8_t *buffer, const uint64_t data);
+
+  /**
+   * \brief Read data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+  void Read16 (const uint8_t *buffer, uint16_t &data);
+
+  /**
+   * \brief Writes data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+  void Read32 (const uint8_t *buffer, uint32_t &data);
+
+  /**
+   * \brief Writes data from a little-endian formatted buffer to data.
+   *
+   * \param buffer the buffer to read from
+   * \param data the read data
+   */
+  void Read64 (const uint8_t *buffer, uint64_t &data);
+
+private:
+  virtual void DoDispose (void) = 0;
+  Ptr<Packet> dataPacket;
+
+};
+
+} // namespace ns3
+
+#endif /* PACKET_TYPE_H */

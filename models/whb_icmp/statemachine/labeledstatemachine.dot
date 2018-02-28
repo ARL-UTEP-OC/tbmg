@@ -1,0 +1,6 @@
+digraph message{
+node0 [label="0" ,shape=doublecircle ];
+node37 [label="0 1" ,shape=circle ];
+node0 -> node37 [label="0"];
+node37 -> node0 [label="1"];
+}
