@@ -19,9 +19,9 @@ from utils import *
 # Archive Decompression
 #---------------------------------------------------------------------------------------------------
 def unpackArchives():
-    #if (not exists("ns-allinone-3.26")):
-    #    creationCheck("ns-allinone-3.26.tar.bz2")
-    #    pid = subprocess.call(['tar', 'jxvf', 'ns-allinone-3.26.tar.bz2'])
+    if (not exists("ns-allinone-3.26")):
+        creationCheck("ns-allinone-3.26.tar.bz2")
+        pid = subprocess.call(['tar', 'jxvf', 'ns-allinone-3.26.tar.bz2'])
     
     if (not exists("prospex")):
         creationCheck("prospex.tgz")
@@ -181,7 +181,7 @@ def main(xmlConfig):
             #sys.exit()
         subprocess.call(['rm', '-r', c["modelName"]])
         
-    mkpath(c["modelName"])
+    mkpath(join("models",c["modelName"]))
     s.loadSettings(c["modelName"])
     
     buildModelStructure()

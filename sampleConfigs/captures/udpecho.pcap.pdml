@@ -1,18 +1,20 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="pdml2html.xsl"?>
 <!-- You can find pdml2html.xsl in /usr/share/wireshark or at https://code.wireshark.org/review/gitweb?p=wireshark.git;a=blob_plain;f=pdml2html.xsl. -->
-<pdml version="0" creator="wireshark/2.0.3" time="Thu Jul 21 18:52:55 2016" capture_file="samples/captures/udpecho.pcap">
+<pdml version="0" creator="wireshark/2.4.4" time="Mon Feb 26 09:53:23 2018" capture_file="/rez/tbmg/sampleConfigs/captures/udpecho.pcap">
 <packet>
   <proto name="geninfo" pos="0" showname="General information" size="42">
     <field name="num" pos="0" show="1" showname="Number" value="1" size="42"/>
     <field name="len" pos="0" show="42" showname="Frame Length" value="2a" size="42"/>
     <field name="caplen" pos="0" show="42" showname="Captured Length" value="2a" size="42"/>
-    <field name="timestamp" pos="0" show="Jul 21, 2016 18:51:40.265412056 EDT" showname="Captured Time" value="1469141500.265412056" size="42"/>
+    <field name="timestamp" pos="0" show="Jul 21, 2016 16:51:40.265412056 MDT" showname="Captured Time" value="1469141500.265412056" size="42"/>
   </proto>
   <proto name="frame" showname="Frame 1: 42 bytes on wire (336 bits), 42 bytes captured (336 bits) on interface 0" size="42" pos="0">
-    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0"/>
+    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0">
+      <field name="frame.interface_name" showname="Interface name: eth0" size="0" pos="0" show="eth0"/>
+    </field>
     <field name="frame.encap_type" showname="Encapsulation type: Ethernet (1)" size="0" pos="0" show="1"/>
-    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 18:51:40.265412056 EDT" size="0" pos="0" show="Jul 21, 2016 18:51:40.265412056 EDT"/>
+    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 16:51:40.265412056 MDT" size="0" pos="0" show="Jul 21, 2016 16:51:40.265412056 MDT"/>
     <field name="frame.offset_shift" showname="Time shift for this packet: 0.000000000 seconds" size="0" pos="0" show="0.000000000"/>
     <field name="frame.time_epoch" showname="Epoch Time: 1469141500.265412056 seconds" size="0" pos="0" show="1469141500.265412056"/>
     <field name="frame.time_delta" showname="Time delta from previous captured frame: 0.000000000 seconds" size="0" pos="0" show="0.000000000"/>
@@ -30,8 +32,8 @@
       <field name="eth.dst_resolved" showname="Destination (resolved): Broadcast" hide="yes" size="6" pos="0" show="Broadcast" value="ffffffffffff"/>
       <field name="eth.addr" showname="Address: Broadcast (ff:ff:ff:ff:ff:ff)" size="6" pos="0" show="ff:ff:ff:ff:ff:ff" value="ffffffffffff"/>
       <field name="eth.addr_resolved" showname="Address (resolved): Broadcast" hide="yes" size="6" pos="0" show="Broadcast" value="ffffffffffff"/>
-      <field name="eth.lg" showname=".... ..1. .... .... .... .... = LG bit: Locally administered address (this is NOT the factory default)" size="3" pos="0" show="1" value="FFFFFFFFFFFFFFFF" unmaskedvalue="ffffff"/>
-      <field name="eth.ig" showname=".... ...1 .... .... .... .... = IG bit: Group address (multicast/broadcast)" size="3" pos="0" show="1" value="FFFFFFFFFFFFFFFF" unmaskedvalue="ffffff"/>
+      <field name="eth.lg" showname=".... ..1. .... .... .... .... = LG bit: Locally administered address (this is NOT the factory default)" size="3" pos="0" show="1" value="1" unmaskedvalue="ffffff"/>
+      <field name="eth.ig" showname=".... ...1 .... .... .... .... = IG bit: Group address (multicast/broadcast)" size="3" pos="0" show="1" value="1" unmaskedvalue="ffffff"/>
     </field>
     <field name="eth.src" showname="Source: 00:00:00_aa:00:00 (00:00:00:aa:00:00)" size="6" pos="6" show="00:00:00:aa:00:00" value="000000aa0000">
       <field name="eth.src_resolved" showname="Source (resolved): 00:00:00_aa:00:00" hide="yes" size="6" pos="6" show="00:00:00_aa:00:00" value="000000aa0000"/>
@@ -61,12 +63,14 @@
     <field name="num" pos="0" show="2" showname="Number" value="2" size="42"/>
     <field name="len" pos="0" show="42" showname="Frame Length" value="2a" size="42"/>
     <field name="caplen" pos="0" show="42" showname="Captured Length" value="2a" size="42"/>
-    <field name="timestamp" pos="0" show="Jul 21, 2016 18:51:40.265431321 EDT" showname="Captured Time" value="1469141500.265431321" size="42"/>
+    <field name="timestamp" pos="0" show="Jul 21, 2016 16:51:40.265431321 MDT" showname="Captured Time" value="1469141500.265431321" size="42"/>
   </proto>
   <proto name="frame" showname="Frame 2: 42 bytes on wire (336 bits), 42 bytes captured (336 bits) on interface 0" size="42" pos="0">
-    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0"/>
+    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0">
+      <field name="frame.interface_name" showname="Interface name: eth0" size="0" pos="0" show="eth0"/>
+    </field>
     <field name="frame.encap_type" showname="Encapsulation type: Ethernet (1)" size="0" pos="0" show="1"/>
-    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 18:51:40.265431321 EDT" size="0" pos="0" show="Jul 21, 2016 18:51:40.265431321 EDT"/>
+    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 16:51:40.265431321 MDT" size="0" pos="0" show="Jul 21, 2016 16:51:40.265431321 MDT"/>
     <field name="frame.offset_shift" showname="Time shift for this packet: 0.000000000 seconds" size="0" pos="0" show="0.000000000"/>
     <field name="frame.time_epoch" showname="Epoch Time: 1469141500.265431321 seconds" size="0" pos="0" show="1469141500.265431321"/>
     <field name="frame.time_delta" showname="Time delta from previous captured frame: 0.000019265 seconds" size="0" pos="0" show="0.000019265"/>
@@ -115,12 +119,14 @@
     <field name="num" pos="0" show="3" showname="Number" value="3" size="48"/>
     <field name="len" pos="0" show="48" showname="Frame Length" value="30" size="48"/>
     <field name="caplen" pos="0" show="48" showname="Captured Length" value="30" size="48"/>
-    <field name="timestamp" pos="0" show="Jul 21, 2016 18:51:40.265436990 EDT" showname="Captured Time" value="1469141500.265436990" size="48"/>
+    <field name="timestamp" pos="0" show="Jul 21, 2016 16:51:40.265436990 MDT" showname="Captured Time" value="1469141500.265436990" size="48"/>
   </proto>
   <proto name="frame" showname="Frame 3: 48 bytes on wire (384 bits), 48 bytes captured (384 bits) on interface 0" size="48" pos="0">
-    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0"/>
+    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0">
+      <field name="frame.interface_name" showname="Interface name: eth0" size="0" pos="0" show="eth0"/>
+    </field>
     <field name="frame.encap_type" showname="Encapsulation type: Ethernet (1)" size="0" pos="0" show="1"/>
-    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 18:51:40.265436990 EDT" size="0" pos="0" show="Jul 21, 2016 18:51:40.265436990 EDT"/>
+    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 16:51:40.265436990 MDT" size="0" pos="0" show="Jul 21, 2016 16:51:40.265436990 MDT"/>
     <field name="frame.offset_shift" showname="Time shift for this packet: 0.000000000 seconds" size="0" pos="0" show="0.000000000"/>
     <field name="frame.time_epoch" showname="Epoch Time: 1469141500.265436990 seconds" size="0" pos="0" show="1469141500.265436990"/>
     <field name="frame.time_delta" showname="Time delta from previous captured frame: 0.000005669 seconds" size="0" pos="0" show="0.000005669"/>
@@ -152,7 +158,7 @@
   </proto>
   <proto name="ip" showname="Internet Protocol Version 4, Src: 10.0.0.10, Dst: 10.0.0.11" size="20" pos="14">
     <field name="ip.version" showname="0100 .... = Version: 4" size="1" pos="14" show="4" value="4" unmaskedvalue="45"/>
-    <field name="ip.hdr_len" showname=".... 0101 = Header Length: 20 bytes" size="1" pos="14" show="5" value="5" unmaskedvalue="45"/>
+    <field name="ip.hdr_len" showname=".... 0101 = Header Length: 20 bytes (5)" size="1" pos="14" show="20" value="45"/>
     <field name="ip.dsfield" showname="Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)" size="1" pos="15" show="0x00000000" value="00">
       <field name="ip.dsfield.dscp" showname="0000 00.. = Differentiated Services Codepoint: Default (0)" size="1" pos="15" show="0" value="0" unmaskedvalue="00"/>
       <field name="ip.dsfield.ecn" showname=".... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)" size="1" pos="15" show="0" value="0" unmaskedvalue="00"/>
@@ -167,10 +173,8 @@
     <field name="ip.frag_offset" showname="Fragment offset: 0" size="2" pos="20" show="0" value="4000"/>
     <field name="ip.ttl" showname="Time to live: 64" size="1" pos="22" show="64" value="40"/>
     <field name="ip.proto" showname="Protocol: UDP (17)" size="1" pos="23" show="17" value="11"/>
-    <field name="ip.checksum" showname="Header checksum: 0xbf8f [validation disabled]" size="2" pos="24" show="0x0000bf8f" value="bf8f">
-      <field name="ip.checksum_good" showname="Good: False" size="2" pos="24" show="0" value="bf8f"/>
-      <field name="ip.checksum_bad" showname="Bad: False" size="2" pos="24" show="0" value="bf8f"/>
-    </field>
+    <field name="ip.checksum" showname="Header checksum: 0xbf8f [validation disabled]" size="2" pos="24" show="0x0000bf8f" value="bf8f"/>
+    <field name="ip.checksum.status" showname="Header checksum status: Unverified" size="0" pos="24" show="2"/>
     <field name="ip.src" showname="Source: 10.0.0.10" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
     <field name="ip.addr" showname="Source or Destination Address: 10.0.0.10" hide="yes" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
     <field name="ip.src_host" showname="Source Host: 10.0.0.10" hide="yes" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
@@ -182,16 +186,14 @@
     <field name="" show="Source GeoIP: Unknown" size="4" pos="26" value="0a00000a"/>
     <field name="" show="Destination GeoIP: Unknown" size="4" pos="30" value="0a00000b"/>
   </proto>
-  <proto name="udp" showname="User Datagram Protocol, Src Port: 54244 (54244), Dst Port: 2200 (2200)" size="8" pos="34">
+  <proto name="udp" showname="User Datagram Protocol, Src Port: 54244, Dst Port: 2200" size="8" pos="34">
     <field name="udp.srcport" showname="Source Port: 54244" size="2" pos="34" show="54244" value="d3e4"/>
     <field name="udp.dstport" showname="Destination Port: 2200" size="2" pos="36" show="2200" value="0898"/>
     <field name="udp.port" showname="Source or Destination Port: 54244" hide="yes" size="2" pos="34" show="54244" value="d3e4"/>
     <field name="udp.port" showname="Source or Destination Port: 2200" hide="yes" size="2" pos="36" show="2200" value="0898"/>
     <field name="udp.length" showname="Length: 14" size="2" pos="38" show="14" value="000e"/>
-    <field name="udp.checksum" showname="Checksum: 0x1434 [validation disabled]" size="2" pos="40" show="0x00001434" value="1434">
-      <field name="udp.checksum_good" showname="Good Checksum: False" size="2" pos="40" show="0" value="1434"/>
-      <field name="udp.checksum_bad" showname="Bad Checksum: False" size="2" pos="40" show="0" value="1434"/>
-    </field>
+    <field name="udp.checksum" showname="Checksum: 0x1434 [unverified]" size="2" pos="40" show="0x00001434" value="1434"/>
+    <field name="udp.checksum.status" showname="Checksum Status: Unverified" size="0" pos="40" show="2"/>
     <field name="udp.stream" showname="Stream index: 0" size="0" pos="42" show="0"/>
   </proto>
   <proto name="fake-field-wrapper">
@@ -199,7 +201,7 @@
       <field name="data.data" showname="Data: 68656c6c6f0a" size="6" pos="42" show="68:65:6c:6c:6f:0a" value="68656c6c6f0a"/>
       <field name="data.len" showname="Length: 6" size="0" pos="42" show="6"/>
   </field>
-</proto>
+  </proto>
 </packet>
 
 
@@ -208,12 +210,14 @@
     <field name="num" pos="0" show="4" showname="Number" value="4" size="46"/>
     <field name="len" pos="0" show="46" showname="Frame Length" value="2e" size="46"/>
     <field name="caplen" pos="0" show="46" showname="Captured Length" value="2e" size="46"/>
-    <field name="timestamp" pos="0" show="Jul 21, 2016 18:51:42.797578977 EDT" showname="Captured Time" value="1469141502.797578977" size="46"/>
+    <field name="timestamp" pos="0" show="Jul 21, 2016 16:51:42.797578977 MDT" showname="Captured Time" value="1469141502.797578977" size="46"/>
   </proto>
   <proto name="frame" showname="Frame 4: 46 bytes on wire (368 bits), 46 bytes captured (368 bits) on interface 0" size="46" pos="0">
-    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0"/>
+    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0">
+      <field name="frame.interface_name" showname="Interface name: eth0" size="0" pos="0" show="eth0"/>
+    </field>
     <field name="frame.encap_type" showname="Encapsulation type: Ethernet (1)" size="0" pos="0" show="1"/>
-    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 18:51:42.797578977 EDT" size="0" pos="0" show="Jul 21, 2016 18:51:42.797578977 EDT"/>
+    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 16:51:42.797578977 MDT" size="0" pos="0" show="Jul 21, 2016 16:51:42.797578977 MDT"/>
     <field name="frame.offset_shift" showname="Time shift for this packet: 0.000000000 seconds" size="0" pos="0" show="0.000000000"/>
     <field name="frame.time_epoch" showname="Epoch Time: 1469141502.797578977 seconds" size="0" pos="0" show="1469141502.797578977"/>
     <field name="frame.time_delta" showname="Time delta from previous captured frame: 2.532141987 seconds" size="0" pos="0" show="2.532141987"/>
@@ -245,7 +249,7 @@
   </proto>
   <proto name="ip" showname="Internet Protocol Version 4, Src: 10.0.0.10, Dst: 10.0.0.11" size="20" pos="14">
     <field name="ip.version" showname="0100 .... = Version: 4" size="1" pos="14" show="4" value="4" unmaskedvalue="45"/>
-    <field name="ip.hdr_len" showname=".... 0101 = Header Length: 20 bytes" size="1" pos="14" show="5" value="5" unmaskedvalue="45"/>
+    <field name="ip.hdr_len" showname=".... 0101 = Header Length: 20 bytes (5)" size="1" pos="14" show="20" value="45"/>
     <field name="ip.dsfield" showname="Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)" size="1" pos="15" show="0x00000000" value="00">
       <field name="ip.dsfield.dscp" showname="0000 00.. = Differentiated Services Codepoint: Default (0)" size="1" pos="15" show="0" value="0" unmaskedvalue="00"/>
       <field name="ip.dsfield.ecn" showname=".... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)" size="1" pos="15" show="0" value="0" unmaskedvalue="00"/>
@@ -260,10 +264,8 @@
     <field name="ip.frag_offset" showname="Fragment offset: 0" size="2" pos="20" show="0" value="4000"/>
     <field name="ip.ttl" showname="Time to live: 64" size="1" pos="22" show="64" value="40"/>
     <field name="ip.proto" showname="Protocol: UDP (17)" size="1" pos="23" show="17" value="11"/>
-    <field name="ip.checksum" showname="Header checksum: 0xbdf4 [validation disabled]" size="2" pos="24" show="0x0000bdf4" value="bdf4">
-      <field name="ip.checksum_good" showname="Good: False" size="2" pos="24" show="0" value="bdf4"/>
-      <field name="ip.checksum_bad" showname="Bad: False" size="2" pos="24" show="0" value="bdf4"/>
-    </field>
+    <field name="ip.checksum" showname="Header checksum: 0xbdf4 [validation disabled]" size="2" pos="24" show="0x0000bdf4" value="bdf4"/>
+    <field name="ip.checksum.status" showname="Header checksum status: Unverified" size="0" pos="24" show="2"/>
     <field name="ip.src" showname="Source: 10.0.0.10" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
     <field name="ip.addr" showname="Source or Destination Address: 10.0.0.10" hide="yes" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
     <field name="ip.src_host" showname="Source Host: 10.0.0.10" hide="yes" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
@@ -275,16 +277,14 @@
     <field name="" show="Source GeoIP: Unknown" size="4" pos="26" value="0a00000a"/>
     <field name="" show="Destination GeoIP: Unknown" size="4" pos="30" value="0a00000b"/>
   </proto>
-  <proto name="udp" showname="User Datagram Protocol, Src Port: 54244 (54244), Dst Port: 2200 (2200)" size="8" pos="34">
+  <proto name="udp" showname="User Datagram Protocol, Src Port: 54244, Dst Port: 2200" size="8" pos="34">
     <field name="udp.srcport" showname="Source Port: 54244" size="2" pos="34" show="54244" value="d3e4"/>
     <field name="udp.dstport" showname="Destination Port: 2200" size="2" pos="36" show="2200" value="0898"/>
     <field name="udp.port" showname="Source or Destination Port: 54244" hide="yes" size="2" pos="34" show="54244" value="d3e4"/>
     <field name="udp.port" showname="Source or Destination Port: 2200" hide="yes" size="2" pos="36" show="2200" value="0898"/>
     <field name="udp.length" showname="Length: 12" size="2" pos="38" show="12" value="000c"/>
-    <field name="udp.checksum" showname="Checksum: 0x1432 [validation disabled]" size="2" pos="40" show="0x00001432" value="1432">
-      <field name="udp.checksum_good" showname="Good Checksum: False" size="2" pos="40" show="0" value="1432"/>
-      <field name="udp.checksum_bad" showname="Bad Checksum: False" size="2" pos="40" show="0" value="1432"/>
-    </field>
+    <field name="udp.checksum" showname="Checksum: 0x1432 [unverified]" size="2" pos="40" show="0x00001432" value="1432"/>
+    <field name="udp.checksum.status" showname="Checksum Status: Unverified" size="0" pos="40" show="2"/>
     <field name="udp.stream" showname="Stream index: 0" size="0" pos="42" show="0"/>
   </proto>
   <proto name="fake-field-wrapper">
@@ -292,7 +292,7 @@
       <field name="data.data" showname="Data: 7564700a" size="4" pos="42" show="75:64:70:0a" value="7564700a"/>
       <field name="data.len" showname="Length: 4" size="0" pos="42" show="4"/>
   </field>
-</proto>
+  </proto>
 </packet>
 
 
@@ -301,12 +301,14 @@
     <field name="num" pos="0" show="5" showname="Number" value="5" size="47"/>
     <field name="len" pos="0" show="47" showname="Frame Length" value="2f" size="47"/>
     <field name="caplen" pos="0" show="47" showname="Captured Length" value="2f" size="47"/>
-    <field name="timestamp" pos="0" show="Jul 21, 2016 18:51:43.955604920 EDT" showname="Captured Time" value="1469141503.955604920" size="47"/>
+    <field name="timestamp" pos="0" show="Jul 21, 2016 16:51:43.955604920 MDT" showname="Captured Time" value="1469141503.955604920" size="47"/>
   </proto>
   <proto name="frame" showname="Frame 5: 47 bytes on wire (376 bits), 47 bytes captured (376 bits) on interface 0" size="47" pos="0">
-    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0"/>
+    <field name="frame.interface_id" showname="Interface id: 0 (eth0)" size="0" pos="0" show="0">
+      <field name="frame.interface_name" showname="Interface name: eth0" size="0" pos="0" show="eth0"/>
+    </field>
     <field name="frame.encap_type" showname="Encapsulation type: Ethernet (1)" size="0" pos="0" show="1"/>
-    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 18:51:43.955604920 EDT" size="0" pos="0" show="Jul 21, 2016 18:51:43.955604920 EDT"/>
+    <field name="frame.time" showname="Arrival Time: Jul 21, 2016 16:51:43.955604920 MDT" size="0" pos="0" show="Jul 21, 2016 16:51:43.955604920 MDT"/>
     <field name="frame.offset_shift" showname="Time shift for this packet: 0.000000000 seconds" size="0" pos="0" show="0.000000000"/>
     <field name="frame.time_epoch" showname="Epoch Time: 1469141503.955604920 seconds" size="0" pos="0" show="1469141503.955604920"/>
     <field name="frame.time_delta" showname="Time delta from previous captured frame: 1.158025943 seconds" size="0" pos="0" show="1.158025943"/>
@@ -338,7 +340,7 @@
   </proto>
   <proto name="ip" showname="Internet Protocol Version 4, Src: 10.0.0.10, Dst: 10.0.0.11" size="20" pos="14">
     <field name="ip.version" showname="0100 .... = Version: 4" size="1" pos="14" show="4" value="4" unmaskedvalue="45"/>
-    <field name="ip.hdr_len" showname=".... 0101 = Header Length: 20 bytes" size="1" pos="14" show="5" value="5" unmaskedvalue="45"/>
+    <field name="ip.hdr_len" showname=".... 0101 = Header Length: 20 bytes (5)" size="1" pos="14" show="20" value="45"/>
     <field name="ip.dsfield" showname="Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)" size="1" pos="15" show="0x00000000" value="00">
       <field name="ip.dsfield.dscp" showname="0000 00.. = Differentiated Services Codepoint: Default (0)" size="1" pos="15" show="0" value="0" unmaskedvalue="00"/>
       <field name="ip.dsfield.ecn" showname=".... ..00 = Explicit Congestion Notification: Not ECN-Capable Transport (0)" size="1" pos="15" show="0" value="0" unmaskedvalue="00"/>
@@ -353,10 +355,8 @@
     <field name="ip.frag_offset" showname="Fragment offset: 0" size="2" pos="20" show="0" value="4000"/>
     <field name="ip.ttl" showname="Time to live: 64" size="1" pos="22" show="64" value="40"/>
     <field name="ip.proto" showname="Protocol: UDP (17)" size="1" pos="23" show="17" value="11"/>
-    <field name="ip.checksum" showname="Header checksum: 0xbdb7 [validation disabled]" size="2" pos="24" show="0x0000bdb7" value="bdb7">
-      <field name="ip.checksum_good" showname="Good: False" size="2" pos="24" show="0" value="bdb7"/>
-      <field name="ip.checksum_bad" showname="Bad: False" size="2" pos="24" show="0" value="bdb7"/>
-    </field>
+    <field name="ip.checksum" showname="Header checksum: 0xbdb7 [validation disabled]" size="2" pos="24" show="0x0000bdb7" value="bdb7"/>
+    <field name="ip.checksum.status" showname="Header checksum status: Unverified" size="0" pos="24" show="2"/>
     <field name="ip.src" showname="Source: 10.0.0.10" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
     <field name="ip.addr" showname="Source or Destination Address: 10.0.0.10" hide="yes" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
     <field name="ip.src_host" showname="Source Host: 10.0.0.10" hide="yes" size="4" pos="26" show="10.0.0.10" value="0a00000a"/>
@@ -368,16 +368,14 @@
     <field name="" show="Source GeoIP: Unknown" size="4" pos="26" value="0a00000a"/>
     <field name="" show="Destination GeoIP: Unknown" size="4" pos="30" value="0a00000b"/>
   </proto>
-  <proto name="udp" showname="User Datagram Protocol, Src Port: 54244 (54244), Dst Port: 2200 (2200)" size="8" pos="34">
+  <proto name="udp" showname="User Datagram Protocol, Src Port: 54244, Dst Port: 2200" size="8" pos="34">
     <field name="udp.srcport" showname="Source Port: 54244" size="2" pos="34" show="54244" value="d3e4"/>
     <field name="udp.dstport" showname="Destination Port: 2200" size="2" pos="36" show="2200" value="0898"/>
     <field name="udp.port" showname="Source or Destination Port: 54244" hide="yes" size="2" pos="34" show="54244" value="d3e4"/>
     <field name="udp.port" showname="Source or Destination Port: 2200" hide="yes" size="2" pos="36" show="2200" value="0898"/>
     <field name="udp.length" showname="Length: 13" size="2" pos="38" show="13" value="000d"/>
-    <field name="udp.checksum" showname="Checksum: 0x1433 [validation disabled]" size="2" pos="40" show="0x00001433" value="1433">
-      <field name="udp.checksum_good" showname="Good Checksum: False" size="2" pos="40" show="0" value="1433"/>
-      <field name="udp.checksum_bad" showname="Bad Checksum: False" size="2" pos="40" show="0" value="1433"/>
-    </field>
+    <field name="udp.checksum" showname="Checksum: 0x1433 [unverified]" size="2" pos="40" show="0x00001433" value="1433"/>
+    <field name="udp.checksum.status" showname="Checksum Status: Unverified" size="0" pos="40" show="2"/>
     <field name="udp.stream" showname="Stream index: 0" size="0" pos="42" show="0"/>
   </proto>
   <proto name="fake-field-wrapper">
@@ -385,7 +383,7 @@
       <field name="data.data" showname="Data: 6563686f0a" size="5" pos="42" show="65:63:68:6f:0a" value="6563686f0a"/>
       <field name="data.len" showname="Length: 5" size="0" pos="42" show="5"/>
   </field>
-</proto>
+  </proto>
 </packet>
 
 
