@@ -141,7 +141,7 @@ class scapyCustomizerTBMG(object):
 				ftag = ".".join(tagstack + [tag])
 				tagged[ftag].append(line)
 				continue
-		
+
 		for t in ["TBMG_PRE","TBMG","TBMG._FIELDS_"]:
 			if t in tagged:
 				del tagged[t]
@@ -152,7 +152,7 @@ class scapyCustomizerTBMG(object):
 			tf = "TBMG._FIELDS_."+f
 			if tf not in tagged:
 				tagged[tf] = ["# NONE"]
-				
+			
 			if tagged[tf][0] == "# CUSTOM":
 				tfc = tf+".code"
 				if tfc not in tagged or len(tagged[tfc]) == 0:
@@ -170,6 +170,10 @@ class scapyCustomizerTBMG(object):
 			last = f
 		nextfields[last] = 0
 		
+		for f in fields:
+			if f not in fieldprocorder:
+				fieldprocorder.append(f)
+
 		self.filename = filename
 		self.classname = classname
 		self.fieldbytes = fields
@@ -506,8 +510,15 @@ Useful for complex operations, such as...
 		RESTfields.append('PACKET')
 		RESTfields.append('PAYLOAD')
 		SEQfields.append('1')
+		SEQfields.append('2')
+		SEQfields.append('4')
+		SEQfields.append('8')
+		SEQfields.append('16')
+		SEQfields.append('32')
 		SEQfields.append('64')
+		SEQfields.append('128')
 		SEQfields.append('256')
+		SEQfields.append('512')
 		SEQfields.append('1024')
 		SEQfields.append('REST')
 		SEQfields.append('TOTAL')
