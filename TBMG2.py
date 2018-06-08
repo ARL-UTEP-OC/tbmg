@@ -17,6 +17,8 @@ from fieldObject import fieldObj
 from StringIO import StringIO
 from collections import OrderedDict
 from scapyCustomizerTBMG import scapyCustomizerTBMG
+from scapyProxy.scapy_bridge import *
+import threading
 
 class Application(Frame):
     def __init__(self, master):
@@ -102,6 +104,45 @@ class Application(Frame):
         self.line2.grid(row =7, columnspan = 20, sticky='ew', pady = 5)
         ###########################################################
         
+        self.scapybridge = ScapyBridge(self)
+        
+        self.startproxy = Button(page5, text='Proxy Toggle', command = self.scapybridge.proxyToggle)
+        self.startproxy.grid(row=0, column=0)
+        
+        self.intercept = Button(page5, text='Intercept On')
+        self.intercept.grid(row=0, column=1)
+
+        self.queue = Button(page5, text='Network queue')
+        self.queue.grid(row=0, column=2)
+        
+        self.savepcap = Button(page5, text='Save to PCAP')
+        self.savepcap.grid(row=0, column=3)
+        
+        self.rawview = Button(page5, text='Raw')
+        self.rawview.grid(row=1, column=0)
+        self.disectview = Button(page5, text='Dissected')
+        self.disectview.grid(row=1, column=1)
+        
+        self.rawtext = Text(page5, height=5, width=55)
+        self.rawtextscroll = Scrollbar(page5)
+        self.rawtextscroll.config(command=self.rawtext.yview)
+        self.rawtext.config(yscrollcommand=self.rawtextscroll.set)
+        self.rawtext.grid(row=2, column=0)
+        self.rawtextscroll.grid(row=2, column=1)
+        self.rawtext.insert(END,'RAWVIEW\n---\n')
+        
+        
+        self.send = Button(page5, text='Send')
+        self.send.grid(row=4, column=0)
+        self.drop = Button(page5, text='Drop')
+        self.drop.grid(row=4, column=1)
+        
+        self.defaultproxyfiltertext = Label(page5)
+        self.proxyfilter = Entry(self.defaultproxyfiltertext)
+        self.proxyfilter.bind("<Return>", (lambda event: self.scapybridge.filterProxy(self.proxyfilter.get())))
+        
+
+
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
 		if self.transport != None:
 			self.ports.grid_remove()
@@ -156,7 +197,7 @@ class Application(Frame):
 				self.addButton.grid(row=9, column =1 , sticky = W)
 				self.generateButton = Button(page4, text = "Generate", command=self.createDissector)
 				self.generateButton.grid(row=10, column = 0, sticky = W)
-						
+				
 			
 			self.box_value = StringVar()
 			fieldbox = ttk.Combobox(page4, textvariable=self.box_value, values=field_name)
@@ -165,7 +206,7 @@ class Application(Frame):
 			
 			fieldbox.bind("<<ComboboxSelected>>", getdesc)
 
-    def create(self):	
+    def create(self):
 		proto = self.proto.get()
 		if not proto:
 			popupmsg("Error Message: Protocol name was not specified")
@@ -194,10 +235,10 @@ class Application(Frame):
 		print(model)
 		time.sleep(5)
 		runtbmg(proto, model)
-		#self.popupmsg("Config File Created. Find in /sampleConfigs") 
+		#self.popupmsg("Config File Created. Find in /sampleConfigs")
 		
 
-    def createDissector(self):#for Dissector Generator	
+    def createDissector(self):#for Dissector Generator
 		global fieldArray
 		print "Under Construction"
 		for line in fieldArray:
@@ -225,25 +266,25 @@ class Application(Frame):
 			#o.write(dissectorOut)
 		
     def messageTypeCreator(self):##for dissector generator
-		popup = Tk() 
+		popup = Tk()
 		global fieldArray
 		def closepopup():
 			popup.withdraw()
 		popup.wm_title("Message Type Creator")
 		def addnewfield():
-			global firstField 
+			global firstField
 			fname=Entry(popup)
 			fieldArray.append(fname)
-			fname.grid(row = firstField, columnspan = 1, column=0, sticky="w")  
+			fname.grid(row = firstField, columnspan = 1, column=0, sticky="w")
 			fstart=Entry(popup, width=7)
 			fieldArray.append(fstart)
-			fstart.grid(row = firstField,columnspan = 1,column=1, sticky="w")  
+			fstart.grid(row = firstField,columnspan = 1,column=1, sticky="w")
 			flen=Entry(popup, width=7)
 			fieldArray.append(flen)
-			flen.grid(row = firstField,columnspan = 1,column=2, sticky="w")  
+			flen.grid(row = firstField,columnspan = 1,column=2, sticky="w")
 			ftype=Entry(popup)
 			fieldArray.append(ftype)
-			ftype.grid(row = firstField,columnspan = 1,column=3, sticky="w") 
+			ftype.grid(row = firstField,columnspan = 1,column=3, sticky="w")
 			fpattern=Entry(popup, width=10)
 			fieldArray.append(fpattern)
 			fpattern.grid(row = firstField,columnspan = 1,  column=4, sticky="w")
@@ -263,21 +304,21 @@ class Application(Frame):
 		######Entry Boxes######
 		fname=Entry(popup)
 		fieldArray.append(fname)
-		fname.grid(row=1, columnspan = 1, column=0, sticky="w")  
+		fname.grid(row=1, columnspan = 1, column=0, sticky="w")
 		fstart=Entry(popup, width=7)
 		fieldArray.append(fstart)
-		fstart.grid(row=1, columnspan = 1,column=1, sticky="w")  
+		fstart.grid(row=1, columnspan = 1,column=1, sticky="w")
 		flen=Entry(popup, width=7)
 		fieldArray.append(flen)
-		flen.grid(row=1, columnspan = 1,column=2, sticky="w")  
+		flen.grid(row=1, columnspan = 1,column=2, sticky="w")
 		ftype=Entry(popup)
 		fieldArray.append(ftype)
-		ftype.grid(row=1, columnspan = 1,column=3, sticky="w") 
+		ftype.grid(row=1, columnspan = 1,column=3, sticky="w")
 		fpattern=Entry(popup, width=10)
 		fieldArray.append(fpattern)
-		fpattern.grid(row=1, columnspan = 1,  column=4, sticky="w") 
+		fpattern.grid(row=1, columnspan = 1,  column=4, sticky="w")
 		
-		   
+		
 		######Creator Popup Buttons#######
 		lastrow = 100
 		addField = ttk.Button(popup, text="+", command = addnewfield)
@@ -352,10 +393,10 @@ def runtbmg(proto, modelname):
 		
 		popupmsg(str(e))
 		exit
-	displayModels(modelname)	
+	displayModels(modelname)
 	
 def popupmsg(msg):
-		popup = Tk() 
+		popup = Tk()
 		def closepopup():
 			popup.destroy()
 		popup.wm_title("Message")
@@ -421,14 +462,14 @@ def buildscapyproto(name,modeltype,connecttype):
 	elif connecttype == "TCP":
 		xcpLayer = TCP()/protLayer
 		ipLayer  = IP(dst="127.0.0.1")/xcpLayer
-	else: 
+	else:
 		xcpLayer = UDP()/protLayer
 		ipLayer  = IP(dst="127.0.0.1")/xcpLayer
 
 	return ipLayer
 	
 
-				
+	
 def makeFieldObjects(packet,basemodelname):
 	global fieldObjectsArray
 	global BTNEditedBG, BTNNotEditedBG
@@ -455,7 +496,7 @@ def makeFieldObjects(packet,basemodelname):
 					field_value = "None"
 					
 				hasedits = (editor.hasedits(fdesc.name) if editor is not None else False)
-					
+				
 				fieldob = fieldObj(fdesc.name, field_value, lyr)
 				fieldob.setTKName(Label(page3,text=fdesc.name))
 				default_value = StringVar(page3, value=field_value)
@@ -604,8 +645,8 @@ def AdvEdit(fieldob,basemodelname):
 	savebtn = Button(controlpanel,text="Save and Close",command=lambda fob=fieldob,b=basemodelname,o=options: SaveAdvEdit(fob,b,o))
 	savebtn.grid(row=30,column=0,columnspan=2,sticky=S)
 	cancelbtn = Button(controlpanel,text="Close without saving",command=CloseAdvEdit)
-	cancelbtn.grid(row=31,column=0,columnspan=2,sticky=S)	
-			
+	cancelbtn.grid(row=31,column=0,columnspan=2,sticky=S)
+	
 	nb.select(page3_5)
 
 def alertpop(title,mlinestring):
@@ -655,7 +696,7 @@ def SaveAdvEdit(fieldob,basemodelname,options):
 
 def CloseAdvEdit():
 	nb.select(page3)
-	nb.tab(page3_5,state=DISABLED)	
+	nb.tab(page3_5,state=DISABLED)
 
 def ReloadProtocol(protoname):
 	global mod_model, mod_class, packet
@@ -677,13 +718,13 @@ def findLayers(packet):
 	layerindex = ["IP", "TCP", "UDP"]
 	lyrs = []
 	count = 0
-	for layer in layerindex:	
+	for layer in layerindex:
 		lyr = packet.getlayer(count)
 		if lyr:
 			lyrs.append(lyr.name)
 		count += 1
 	return lyrs
-		
+	
 
 def getProtoLayerSize():##for dependencies usage
 	global ipLayer, layers, handletcp, datalayer
@@ -695,7 +736,7 @@ def getProtoLayerSize():##for dependencies usage
 
 		if ipLayer == None:
 			if count  == 2:
-				datalayer=layer			
+				datalayer=layer
 		count = count - 1
 def showmodeldata(name, modeltype, connecttype):
 	global show
@@ -763,7 +804,7 @@ def modifymodeldata(name, modeltype, connecttype):
 	updateButton = Button(ButtonsPanelSenders, text = "Update", command = lambda: updatemodeldata2())
 	updateButton.grid(row=buttonsRoffset+1, column=0+buttonsCoffset, sticky=S)
 	sendButton = Button(ButtonsPanelSenders, text = "Send", command = lambda: sendpacket2())
-	sendButton.grid(row=buttonsRoffset+2, column=0+buttonsCoffset, sticky=S)	
+	sendButton.grid(row=buttonsRoffset+2, column=0+buttonsCoffset, sticky=S)
 	
 	TCP = packet.getlayer('TCP')
 	TCProwOffset = max(buttonsRoffset+2,TCProwOffset)
@@ -817,7 +858,7 @@ def makeIP():
 	ip.name=packet.name
 	
 	return ip
-		
+	
 def sendpacket2():
 	global mystream, handletcp, autoTCP, packet
 	
@@ -834,7 +875,7 @@ def sendpacket2():
 	#dataLayer.show()
 	#print "this is ipLayer"
 	ipLayer = makeIP()
-	 
+	
 	print "###TEST###"
 	print "ipLayer.show = :"
 	ipLayer.show()
@@ -911,7 +952,7 @@ def PacketScraper(packet):  #creates an associative collection of values from th
 	# adding attributes nightmare: https://github.com/secdev/scapy/issues/343
 	# so had to settle on using print, and capturing from above text logic
 	
-	return asobj	
+	return asobj
 	
 def SafeCompareEqual(a,b):
 	
@@ -964,7 +1005,7 @@ def updateObjectField(field, updateValue):
 def manualTCP():
 	global srcip
 	subprocess.call(["iptables", "-A", "OUTPUT", "-p", "tcp", "--tcp-flags", "RST", "RST", "-j", "DROP" ])
-	#iptables -A OUTPUT -p tcp --tcp-flags RST RST -j DROP 
+	#iptables -A OUTPUT -p tcp --tcp-flags RST RST -j DROP
 	subprocess.call(["iptables", "-L"])
 	#iptables -L
 	sport = random.randint(1024, 65535)
@@ -985,14 +1026,14 @@ def manualTCP():
 	ACK=TCP(sport = sport, dport=dstport, flags="A", seq=12346, ack=my_ack)
 	updateField("Transport","ack", my_ack)
 	
-	FlagActualSend(True)	
+	FlagActualSend(True)
 	send(ip/ACK)
 	FlagActualSend(False)
 
 def getField(fieldName):
 		for field in fieldObjectsArray:
 			if field.name == fieldName:
-				return field	
+				return field
 def updateField(layerID,fieldname, updateValue):
 	#global layers, layerindex
 	
@@ -1021,7 +1062,7 @@ def updatemodeldata2():
 	lyrs = findLayers(packet)
 	for field in fieldObjectsArray:
 		updateValue = field.TKfieldValue.get()
-		l= lyrs.index(field.layer)	
+		l= lyrs.index(field.layer)
 		if updateValue != field.value:
 			print updateValue
 			#exec("updateValue="+updateValue)
@@ -1058,7 +1099,7 @@ def FlagActualSend(onoff):
 	else:
 		os.remove(fname)
 
-packet = None	
+packet = None
 ipLayer = None
 show = None
 tcpEntry=None
@@ -1106,6 +1147,9 @@ nb.add(page3_5, text='Adv. Field', state=DISABLED)
 
 page4 = ttk.Frame(nb)
 nb.add(page4, text='Create Dissector')
+
+page5 = ttk.Frame(nb)
+nb.add(page5, text='Scapy Proxy')
 
 app = Application(root)
 root.mainloop()
