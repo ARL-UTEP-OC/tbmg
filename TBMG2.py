@@ -19,52 +19,7 @@ from collections import OrderedDict
 from scapyCustomizerTBMG import scapyCustomizerTBMG
 from scapyProxy.scapy_bridge import *
 import threading
-
-class VerticalScrolledFrame(Frame):
-	#https://gist.github.com/EugeneBakin/76c8f9bcec5b390e45df
-    """A pure Tkinter scrollable frame that actually works!
-    * Use the 'interior' attribute to place widgets inside the scrollable frame
-    * Construct and pack/place/grid normally
-    * This frame only allows vertical scrolling
-    * SET self.interior to parent!
-    """
-    def __init__(self, parent, *args, **kw):
-        Frame.__init__(self, parent, *args, **kw)
-
-        # create a canvas object and a vertical scrollbar for scrolling it
-        self.vscrollbar = Scrollbar(self, orient=VERTICAL)
-        self.vscrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
-        self.canvas = Canvas(self, bd=0, highlightthickness=0, height=600,
-                        yscrollcommand=self.vscrollbar.set)
-        self.canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
-        self.vscrollbar.config(command=self.canvas.yview)
-
-        # reset the view
-        self.canvas.xview_moveto(0)
-        self.canvas.yview_moveto(0)
-
-        # create a frame inside the canvas which will be scrolled with it
-        self.interior = interior = Frame(self.canvas, height=70, width=55)
-        self.interior_id = self.canvas.create_window(0, 0, window=interior,
-                                           anchor=NW)
-
-        # track changes to the canvas and frame width and sync them,
-        # also updating the scrollbar
-        def _configure_interior(event):
-            # update the scrollbars to match the size of the inner frame
-            size = (self.interior.winfo_reqwidth(), self.interior.winfo_reqheight())
-            self.canvas.config(scrollregion="0 0 %s %s" % size)
-            if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
-                # update the canvas's width to fit the inner frame
-                self.canvas.config(width=interior.winfo_reqwidth())
-        self.interior.bind('<Configure>', _configure_interior)
-
-        def _configure_canvas(event):
-            if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
-                # update the inner frame's width to fill the canvas
-                self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
-        self.canvas.bind('<Configure>', _configure_canvas)
-
+from scapyProxy.GuiUtils import VerticalScrolledFrame
 
 class Application(Frame):
     def __init__(self, master):
@@ -164,9 +119,9 @@ class Application(Frame):
         self.savepcap = Button(page5, text='Save to PCAP')
         self.savepcap.grid(row=0, column=3)
         
-        self.rawview = Button(page5, text='Raw')
+        self.rawview = Button(page5, text='Raw', command=self.scapybridge.sendRawUpdate)
         self.rawview.grid(row=1, column=0)
-        self.disectview = Button(page5, text='Dissected')
+        self.disectview = Button(page5, text='Dissected', command=self.scapybridge.sendDisectUpdate)
         self.disectview.grid(row=1, column=1)
 
         self.defaultproxyfiltertext = Button(page5, text="Filter:")
@@ -182,7 +137,7 @@ class Application(Frame):
         self.rawtext.grid(row=3, column=0)
         self.rawtextscroll.grid(row=3, column=1)
         self.rawtext.insert(END,'RAWVIEW\n---\n')
-        '''
+        
         #for not intercepting
         self.disecttext = Text(page5, height=50, width=55)
         self.disecttextscroll = Scrollbar(page5)
@@ -191,19 +146,21 @@ class Application(Frame):
         self.disecttext.grid(row=3, column=2)
         self.disecttextscroll.grid(row=3, column=3)
         self.disecttext.insert(END, 'DISECT\n---\n')
+        self.disectlist = None
+        self.disectLable = None
         '''
-        #self.disectscroll = VerticalScrolledFrame(page5)
-        self.disectlist = VerticalScrolledFrame(page5,height=100,width=50)#,yscrollcommand=self.disectscroll.set,height=50,width=55)+
+        #for intercepting
+        self.disectlist = VerticalScrolledFrame(page5,height=100,width=50)
         self.disectlist.grid(row=3, column=2)
         self.disectLable = Label(self.disectlist.interior, text='DISECT VIEW\n----\n')
         self.disectLable.grid(row=0,column=0)
-        #for i in range(40):
-	    #    Label(self.disectlist.interior, text= str(i)+'ip.src:').grid(row=1+i,column=1)
-	    #    Entry(self.disectlist.interior).grid(row=1+i, column=2)
+        '''
         self.send = Button(page5, text='Send')
         self.send.grid(row=4, column=0)
-        self.drop = Button(page5, text='Drop')
+        self.drop = Button(page5, text='Drop', command=self.update())
         self.drop.grid(row=4, column=1)
+        
+        self.page5 = page5
         
 
 
