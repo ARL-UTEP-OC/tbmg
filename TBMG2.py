@@ -18,6 +18,7 @@ from StringIO import StringIO
 from collections import OrderedDict
 from scapyCustomizerTBMG import scapyCustomizerTBMG
 from scapyProxy.scapy_bridge import *
+import tkFileDialog
 import threading
 from scapyProxy.GuiUtils import VerticalScrolledFrame
 
@@ -116,20 +117,32 @@ class Application(Frame):
         self.queue = Button(page5, text='Network queue')
         self.queue.grid(row=0, column=2)
         
-        self.savepcap = Button(page5, text='Save to PCAP')
+        
+        def file_save():
+            #https://stackoverflow.com/questions/19476232/save-file-dialog-in-tkinter
+            f = tkFileDialog.asksaveasfile(mode='w', defaultextension=".pcap")
+            if f is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+                return
+            self.scapybridge.pcapfile = f.name
+            print 'using',f.name
+            f.close()
+        self.savepcap = Button(page5, text='Save to PCAP', command=file_save)
         self.savepcap.grid(row=0, column=3)
         
         self.rawview = Button(page5, text='Raw', command=self.scapybridge.sendRawUpdate)
         self.rawview.grid(row=1, column=0)
         self.disectview = Button(page5, text='Dissected', command=self.scapybridge.sendDisectUpdate)
         self.disectview.grid(row=1, column=1)
-
-        self.defaultproxyfiltertext = Button(page5, text="Filter:")
+        
+        def setFilter():
+            self.scapybridge.filter = self.proxyfilter.get()
+            print 'using filter:', self.scapybridge.filter
+        self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
         self.defaultproxyfiltertext.grid(row=2, column=0)
         self.proxyfilter = Entry(page5)
-        self.proxyfilter.bind("<Return>", (lambda event: self.scapybridge.filterProxy(self.proxyfilter.get())))
+        self.proxyfilter.bind("<Return>", setFilter)
         self.proxyfilter.grid(row=2, column=1)
-		
+        
         self.rawtext = Text(page5, height=50, width=55)
         self.rawtextscroll = Scrollbar(page5)
         self.rawtextscroll.config(command=self.rawtext.yview)

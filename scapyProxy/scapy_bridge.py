@@ -135,15 +135,15 @@ class ScapyBridge(object):
                 self.gui_layers[l.name] = []
                 layer = Label(self.tbmg.disectlist.interior, text=l.name)
                 layer.grid(row=rownum,column=0)
-                rownum+=1
+                rownum += 1
                 for f in l.fields:
                     label = Label(self.tbmg.disectlist.interior, text=str(f))
                     label.grid(row=rownum,column=1)
                     entry = Entry(self.tbmg.disectlist.interior, width=30)
                     entry.grid(row=rownum, column=2)
-                    entry.insert(0,str(l.fields[f]))
-                    self.gui_layers[l.name].append((layer,label,entry))
-                    rownum+=1
+                    entry.insert(0, str(l.fields[f]))
+                    self.gui_layers[l.name].append((layer, label, entry))
+                    rownum += 1
             except Exception, e:
                 print e, l
                 break
@@ -238,29 +238,36 @@ class ScapyBridge(object):
                 pass
         self.status = status
 
-    def setFilter(self, text):
-        self.filter = text
-
     #ran from seperate process
     def callback(self, number, payload=None): # the4960- added 'number' param
         # Here is where the magic happens.
         data = payload.get_data()
         pkt = IP(data)
         print("Got a packet:", str(pkt.src), str(pkt.dst))
-        if self.pcapfile:
-            wrpcap(self.pcapfile, pkt, append=True)
+        dofilter = False
         if self.filter:
-            if eval(self.filter):
-                #TODO
-                a=1
-        self.child_conn.send(raw(pkt))
-        if self.intercept:
+            try:
+                dofilter = sniff(offline=pkt, filter=self.filter)
+                if dofilter:
+                    self.child_conn.send(raw(pkt))
+            except Exception, e:
+                dofilter = False
+                print 'Filter err:', self.filter, e
+        else:
+            self.child_conn.send(raw(pkt))
+        if self.intercept and not dofilter:
             new_ptk = IP(self.child_conn.recv())
+            if self.pcapfile:
+                wrpcap(self.pcapfile, pkt, append=True)
+                wrpcap(self.pcapfile[:-5]+'_mod.pcap', new_ptk, append=True)
             payload.set_verdict_modified(nfqueue.NF_ACCEPT, str(new_ptk), len(new_ptk))
         elif self.drop:
             payload.set_verdict(nfqueue.NF_DROP)
         else:
             payload.set_verdict(nfqueue.NF_ACCEPT)
+            if self.pcapfile:
+                wrpcap(self.pcapfile, pkt, append=True)
+                wrpcap(self.pcapfile[:-5]+'_mod.pcap', pkt, append=True)
             
     #ran as a process
     def _runProxy(self, child_conn):
