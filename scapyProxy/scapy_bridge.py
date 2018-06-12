@@ -13,6 +13,7 @@ from multiprocessing import Process, Pipe
 import time
 from scapyProxy.GuiUtils import VerticalScrolledFrame
 from socket import gaierror
+import chardet
 
 
 class ScapyBridge(object):
@@ -23,7 +24,6 @@ class ScapyBridge(object):
         self.q = None
         self.status = False
         self.filter = None
-        self.drop = None
         self.parent_conn, self.child_conn = Pipe()
         self.pcapfile = ''
         self.intercept = False
@@ -44,6 +44,7 @@ class ScapyBridge(object):
                 hexval = self.parent_conn.recv()
                 pkt = Raw(hexval)
                 ip = IP(pkt)
+                print 'gui got:', ip.summary()
                 if self.intercept:
                     self.current_pack = ip
                     self.clearDisect()
@@ -55,62 +56,90 @@ class ScapyBridge(object):
                     self.tbmg.rawtext.insert('0.0', '\n- ' + str(hexval).encode('hex'))
             time.sleep(0.1)
     
+    def sendDrop(self):
+        self.parent_conn.send('drop')
+    
     def sendRawUpdate(self):
         text = str(self.tbmg.rawtext.get('0.0',END)).strip()
         print 'updating to:', text
         self.parent_conn.send(text.decode('hex'))
         
     def sendDisectUpdate(self):
-        print 'current:',self.current_pack
+        print 'current:',str(raw(self.current_pack)).encode('hex')
         if not self.gui_layers or len(self.tbmg.disectlist.interior.grid_slaves())<2:
             return
         for layer in self.gui_layers:
             if layer and layer in self.current_pack:
                 for pair in self.gui_layers[layer]:
-                    value = '0'
+                    type1 = None #correct type for feild
+                    exec("type1 = type (self.current_pack['" + layer + "']." + pair[1].cget('text') + ")")
+                    type2 = None
+                    value = None
                     try:
-                        value = str(int(pair[2].get()))
+                        value = str(int(pair[2].get())).strip()
                     except:
-                        value = '"'+str(pair[2].get())+'"'
+                        value = str(pair[2].get())
                         try:
-                            value = value.encode('utf8')
-                        except:
-                            value = value.encode('hex')
+                            value = '"'+value.encode('utf8')+'"'
+                        except: #should only happen on custom input
+                            print 'oddball:',value
+                            if type1 == int:
+                                value = int(value.encode('hex'), 16)
+                            else:
+                                value = '"'+value.decode('hex')+'"' #assuming unicode
                     #TODO add protocol exceptions here!
-                    if layer == 'TCP' and pair[1].cget('text')=='options':
-                        #if str(pair[2].get()):
-                        #    self.current_pack['TCP'].options = str(pair[2].get())
-                        continue
-                    if layer == 'IP' and pair[1].cget('text')=='flags':
-                        if value and value is not '""' and str(pair[2].get()):
-                            print 'USING:', str(pair[2].get())
-                            self.current_pack['IP'].flags = str(pair[2].get())
-                        else:
-                            self.current_pack['IP'].flags = None
-                        continue
-                    if layer == 'IP in ICMP' and pair[1].cget('text')=='flags':
-                        if value and value is not '""' and str(pair[2].get()):
-                            print 'USING:', str(pair[2].get())
-                            self.current_pack['IP in ICMP'].flags = str(pair[2].get())
-                        else:
-                            self.current_pack['IP in ICMP'].flags = None
-                        continue
-                    if layer == 'DNS' and pair[1].cget('text')=='qd':
-                        self.current_pack['DNS'].qd = str(pair[2].get())
-                        continue
+                    try:
+                        if type(value) == str and type1 == str:
+                            if int(value[1:-1],16):
+                                value = '"'+value[1:-1].decode('hex')+'"'
+                                print('found HEX',value)
+                    except Exception:
+                        pass
+                        #print value,'not HEX',e
+                    if type(value) == str and len(value)>=4 and value[1]=='[' and value[-2]==']' and type1==type([]):
+                        print 'found array type',value
+                        value = value[1:-1]
                     if value == '"None"':
-                        value = 'None'
+                        if type1 == type(None):
+                            continue
+                        if type1 == int:
+                            value = '0'
+                        else:
+                            value = 'None'
+                    if layer == 'Raw' and pair[1].cget('text') == 'load':  # ping 8.8.4.4
+                        equal = self.current_pack[layer].load == value[1:-1]
+                        if not equal:
+                            print("FOUND CHANGE in RAW!!!", value, value.encode('hex'))
+                            print(self.current_pack['Raw'].load,self.current_pack['Raw'].load.encode('hex'))
+                            print('------------------')
+                            continue#use default val
+                        self.current_pack['Raw'].load = value[1:-1]
+                        continue
                     # TODO add protocol exceptions here!
+                    change =False
+                    equal = eval("self.current_pack['" + layer + "']." + pair[1].cget('text') + " == " + value)
+                    if not equal:
+                        print("FOUND CHANGE!!!",value)
+                        print("self.current_pack['" + layer + "']." + pair[1].cget('text') + " == " + value+")")
+                        exec ("print self.current_pack['" + layer + "']." + pair[1].cget('text'))
+                        exec ("type2 = type ("+value+")")
+                        print('was:',type1,'is:',type2)
+                        print('------------------')
+                    
                     execute = "self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
                     print('setting:', execute)
                     try:
                         exec(execute)
+                        exec ("type2 = type (self.current_pack['" + layer + "']." + pair[1].cget('text') + ")")
+                        if type1 != type2:
+                            print 'ERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR???',type1,type2
                     except ValueError,ve:
                         print 'FAILED-ValueErr', ve
                     except gaierror,e:
                         print(self.current_pack)
                         print('GAI ERROR:', e)
         r = raw(self.current_pack)
+        print('producing from disect:',r.encode('hex'))
         self.parent_conn.send(r)
         self.gui_layers = None
         self.clearDisect()
@@ -141,7 +170,11 @@ class ScapyBridge(object):
                     label.grid(row=rownum,column=1)
                     entry = Entry(self.tbmg.disectlist.interior, width=30)
                     entry.grid(row=rownum, column=2)
-                    entry.insert(0, str(l.fields[f]))
+                    try:
+                        entry.insert(0, str(l.fields[f]).encode('utf8'))
+                    except:
+                        print('FOUND ODD ENCODING:',chardet.detect(str(l.fields[f])))
+                        entry.insert(0, str(l.fields[f]).encode('hex'))
                     self.gui_layers[l.name].append((layer, label, entry))
                     rownum += 1
             except Exception, e:
@@ -244,7 +277,7 @@ class ScapyBridge(object):
         data = payload.get_data()
         pkt = IP(data)
         print("Got a packet:", str(pkt.src), str(pkt.dst))
-        dofilter = False
+        dofilter = False #show package = True
         if self.filter:
             try:
                 dofilter = sniff(offline=pkt, filter=self.filter)
@@ -255,14 +288,20 @@ class ScapyBridge(object):
                 print 'Filter err:', self.filter, e
         else:
             self.child_conn.send(raw(pkt))
-        if self.intercept and not dofilter:
-            new_ptk = IP(self.child_conn.recv())
+        print 'using filter?', dofilter, type(dofilter)
+        if self.intercept and dofilter:
+            print 'intercepting'
+            recv = self.child_conn.recv()
+            if recv is 'drop':
+                payload.set_verdict(nfqueue.NF_DROP)
+                return
+            new_ptk = IP(recv)
+            print 'Changed:',pkt.summary()
+            print 'To:', new_ptk.summary()
             if self.pcapfile:
                 wrpcap(self.pcapfile, pkt, append=True)
                 wrpcap(self.pcapfile[:-5]+'_mod.pcap', new_ptk, append=True)
             payload.set_verdict_modified(nfqueue.NF_ACCEPT, str(new_ptk), len(new_ptk))
-        elif self.drop:
-            payload.set_verdict(nfqueue.NF_DROP)
         else:
             payload.set_verdict(nfqueue.NF_ACCEPT)
             if self.pcapfile:

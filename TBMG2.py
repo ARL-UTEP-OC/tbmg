@@ -129,19 +129,21 @@ class Application(Frame):
         self.savepcap = Button(page5, text='Save to PCAP', command=file_save)
         self.savepcap.grid(row=0, column=3)
         
-        self.rawview = Button(page5, text='Raw', command=self.scapybridge.sendRawUpdate)
-        self.rawview.grid(row=1, column=0)
-        self.disectview = Button(page5, text='Dissected', command=self.scapybridge.sendDisectUpdate)
-        self.disectview.grid(row=1, column=1)
+        self.rawview = Button(page5, text='Send Raw', command=self.scapybridge.sendRawUpdate)
+        self.rawview.grid(row=2, column=0)
+        self.disectview = Button(page5, text='Send Dissected', command=self.scapybridge.sendDisectUpdate)
+        self.disectview.grid(row=2, column=1)
+        self.drop = Button(page5, text='Drop', command=self.scapybridge.sendDrop)
+        self.drop.grid(row=2, column=3)
         
         def setFilter():
             self.scapybridge.filter = self.proxyfilter.get()
             print 'using filter:', self.scapybridge.filter
         self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
-        self.defaultproxyfiltertext.grid(row=2, column=0)
+        self.defaultproxyfiltertext.grid(row=1, column=0)
         self.proxyfilter = Entry(page5)
-        self.proxyfilter.bind("<Return>", setFilter)
-        self.proxyfilter.grid(row=2, column=1)
+        self.proxyfilter.bind("<Return>", setFilter())
+        self.proxyfilter.grid(row=1, column=1)
         
         self.rawtext = Text(page5, height=50, width=55)
         self.rawtextscroll = Scrollbar(page5)
@@ -168,10 +170,9 @@ class Application(Frame):
         self.disectLable = Label(self.disectlist.interior, text='DISECT VIEW\n----\n')
         self.disectLable.grid(row=0,column=0)
         '''
-        self.send = Button(page5, text='Send')
-        self.send.grid(row=4, column=0)
-        self.drop = Button(page5, text='Drop', command=self.update())
-        self.drop.grid(row=4, column=1)
+        #self.send = Button(page5, text='Send')
+        #self.send.grid(row=4, column=0)
+        
         
         self.page5 = page5
         
