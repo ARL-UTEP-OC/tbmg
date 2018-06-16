@@ -7,7 +7,7 @@ from Tkinter import *
 from scapy.all import *
 import os
 import threading
-from multiprocessing import Process, Pipe
+from multiprocessing import Pipe
 import time
 from scapyProxy.GuiUtils import VerticalScrolledFrame
 from socket import gaierror
@@ -215,6 +215,13 @@ class ScapyBridge(object):
         return capture.getvalue()+'\n----------------------------------\n'
     
     def interceptToggle(self):
+        if self.intercepting:
+            self.parent_conn.send('drop')
+            time.sleep(.1)
+            while self.child_conn.poll():
+                self.child_conn.recv()
+            self.clearRaw()
+            self.clearDisect()
         self.intercepting = not self.intercepting
         print 'intercpet is now', self.intercepting
         
@@ -262,6 +269,7 @@ class ScapyBridge(object):
                 print("Adding iptable rules :")
                 print(self.iptablesr)
                 os.system(self.iptablesr)
+                self.intercepter = interceptor.Interceptor()
                 try:
                     print 'about to start proxy'
                     self.intercepter.start(self.callback, queue_ids=[0])
@@ -277,11 +285,23 @@ class ScapyBridge(object):
                 print 'start proxy err', e
         else:
             try:
+                print 'droping packs'
+                #clean gui
+                if self.intercepting:
+                    self.parent_conn.send('drop')
+                    time.sleep(.1)
+                    while self.child_conn.poll():
+                        self.child_conn.recv()
+                    self.clearRaw()
+                    self.clearDisect()
+                #stop proxy
+                print 'stoping proxy'
                 self.intercepter.stop()
                 print('flushing...')
                 os.system('iptables -F')
                 os.system('iptables -X')
-            except:
+            except Exception, e:
+                print 'proxy err:',e
                 pass
         self.status = status
 
@@ -319,12 +339,18 @@ class ScapyBridge(object):
                 print 'DROPING'
                 return data, interceptor.NF_DROP
             new_ptk = self.current_pack
+            try: #fix chksum and len
+                del(new_ptk['IP'].chksum)
+                del (new_ptk['TCP'].chksum)
+            except:
+                pass
+            new_ptk.show2()
             print 'Changed:', pkt.summary()
             print 'To:', new_ptk.summary()
             if self.pcapfile:
                 wrpcap(self.pcapfile, pkt, append=True)
                 wrpcap(self.pcapfile[:-5] + '_mod.pcap', new_ptk, append=True)
-            return raw(new_ptk), interceptor.NF_ACCEPT
+            return raw(new_ptk[1]), interceptor.NF_ACCEPT
         else:
             self.tbmg.disecttext.insert('3.0', self._packet_disect_nointercept(pkt))
             self.tbmg.rawtext.insert('0.0', '\n- ' + str(raw(pkt)).encode('hex'))

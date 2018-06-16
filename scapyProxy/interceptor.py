@@ -356,5 +356,5 @@ class Interceptor(object):
 			close_queue(qconfig.nfq_handle)
 			qconfig.nfq_socket.close()
 			# logger.debug("joining verdict thread for queue %d", qconfig.queue_id)
-			qconfig.verdictthread.join()
+			#qconfig.verdictthread.join()
 		self._netfilterqueue_configs.clear()
