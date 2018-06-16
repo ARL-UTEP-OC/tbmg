@@ -17,7 +17,7 @@ from fieldObject import fieldObj
 from StringIO import StringIO
 from collections import OrderedDict
 from scapyCustomizerTBMG import scapyCustomizerTBMG
-from scapyProxy.scapy_bridge import *
+from scapyProxy.scapy_bridge3 import *
 import tkFileDialog
 import threading
 from scapyProxy.GuiUtils import VerticalScrolledFrame
