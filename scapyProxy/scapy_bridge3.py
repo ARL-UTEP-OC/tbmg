@@ -46,14 +46,18 @@ class ScapyBridge(object):
 
     
     def sendDrop(self):
-        self.parent_conn.send('drop')
+        if self.intercepting:
+            self.parent_conn.send('drop')
     
     def sendRawUpdate(self):
-        text = str(self.tbmg.rawtext.get('0.0', END)).strip()
-        print 'updating to:', text
-        self.parent_conn.send(text.decode('hex'))
+        if self.intercepting:
+            text = str(self.tbmg.rawtext.get('0.0', END)).strip()
+            print 'updating to:', text
+            self.parent_conn.send(text.decode('hex'))
     
     def sendDisectUpdate(self):
+        if not self.intercepting:
+            return
         print 'current:', str(raw(self.current_pack)).encode('hex')
         if not self.gui_layers or len(self.tbmg.disectlist.interior.grid_slaves()) < 2:
             return
@@ -263,8 +267,8 @@ class ScapyBridge(object):
     
     def proxyToggle(self):
         print(not self.status)
-        status = not self.status
-        if status:
+        self.status = not self.status
+        if self.status:
             try:
                 print("Adding iptable rules :")
                 print(self.iptablesr)
@@ -288,8 +292,9 @@ class ScapyBridge(object):
                 print 'droping packs'
                 #clean gui
                 if self.intercepting:
-                    self.parent_conn.send('drop')
-                    time.sleep(.1)
+                    for i in range(20):
+                        self.parent_conn.send('drop')
+                    time.sleep(.3)
                     while self.child_conn.poll():
                         self.child_conn.recv()
                     self.clearRaw()
@@ -303,11 +308,14 @@ class ScapyBridge(object):
             except Exception, e:
                 print 'proxy err:',e
                 pass
-        self.status = status
+
 
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
         # Here is where the magic happens.
+        if not self.status:
+            print 'I should not be on...'
+            return data, interceptor.NF_DROP
         eth = Ether(ll_data)
         pkt = eth/IP(data)
         print("Got a packet:",pkt.summary())
