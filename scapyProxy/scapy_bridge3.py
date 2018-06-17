@@ -20,10 +20,10 @@ class ScapyBridge(object):
     
     def __init__(self, tbmg_):
         # output catches outgoing packets, input from other machines, and forward for mitm
-        #self.iptablesr = "iptables -A OUTPUT -j NFQUEUE --queue-num 2; iptables -A FORWARD -j NFQUEUE --queue-num 2; iptables -A INPUT -j NFQUEUE --queue-num 2"
+        self.iptablesr = "iptables -A OUTPUT -j NFQUEUE --queue-num 0; iptables -A FORWARD -j NFQUEUE --queue-num 0; iptables -A INPUT -j NFQUEUE --queue-num 0"
         #self.iptablesr = ""#""iptables -t nat -A PREROUTING -j NFQUEUE --queue-num 2"
         #self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:2; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:2; iptables -I INPUT 1 -j NFQUEUE --queue-balance 0:2;'
-        self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-num 0; iptables -I FORWARD 1 -j NFQUEUE --queue-num 0; iptables -I INPUT 1 -j NFQUEUE --queue-num 0;'
+        #self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-num 0; iptables -I FORWARD 2 -j NFQUEUE --queue-num 0; iptables -I INPUT 3 -j NFQUEUE --queue-num 0'
         self.tbmg = tbmg_
         self.q = None
         self.status = False
@@ -109,8 +109,8 @@ class ScapyBridge(object):
                     try:
                         if getattr(self.current_pack[layer], pair[1].cget('text')) != eval(value):
                             execute = "self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
-                            print('setting:', execute)
-                            print 'oldval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text')))
+                            #print('setting:', execute)
+                            #print 'oldval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text')))
                             setattr(self.current_pack[layer], pair[1].cget('text'), eval(value))
                             print 'newval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text')))
                     except Exception, e:
@@ -299,7 +299,8 @@ class ScapyBridge(object):
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
-                dofilter = bool(sniff(offline=self.current_pack, filter=self.filter))
+                dofilter = bool(sniff(offline=self.current_pack['IP'], filter=self.filter))
+                print 'filter:',dofilter
                 if not dofilter:
                     return data, interceptor.NF_ACCEPT
             except Exception, e:
@@ -318,6 +319,7 @@ class ScapyBridge(object):
             self.clearRaw()
             self._packet_disect_intercept(self.current_pack)
             self.tbmg.rawtext.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+            #recive data from GUI
             recv = self.child_conn.recv()
             if recv == 'drop':
                 print 'DROPING'
@@ -327,9 +329,8 @@ class ScapyBridge(object):
                 self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
             elif recv == 'disect':#already been modded
                 pass
-            
-            print 'old chksum:', self.current_pack['IP'].chksum
-            try:  # fix chksum and len
+            # fix chksum and len
+            try:
                 del (self.current_pack['IP'].chksum)
             except:
                 pass
@@ -342,6 +343,7 @@ class ScapyBridge(object):
             except:
                 pass
             self.current_pack = self.current_pack.__class__(str(self.current_pack))
+            #handle updated packet
             if self.pcapfile:
                 wrpcap(self.pcapfile, org, append=True)
                 wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
@@ -350,12 +352,10 @@ class ScapyBridge(object):
             #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
             return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
         else:
+            print 'not intercpeting..'
             self.tbmg.disecttext.insert('3.0', self._packet_disect_nointercept(self.current_pack))
             self.tbmg.rawtext.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
             if self.pcapfile:
                 wrpcap(self.pcapfile, self.current_pack, append=True)
                 wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
-            return raw(self.current_pack), interceptor.NF_ACCEPT
-    # ran as a process
-    #def _runProxy(self):
-    
+            return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
