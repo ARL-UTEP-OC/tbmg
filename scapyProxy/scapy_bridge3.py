@@ -34,17 +34,8 @@ class ScapyBridge(object):
         self.gui_layers = {}  # gui_layers['IP'] = [(Label(text=layer),Label(text=feild_name),Entry(text=feild_value)),(L,E),...]
         self.current_pack = None
         self.sock = None
-        
         self.intercepter = interceptor.Interceptor()
-        #self.q = NetfilterQueue()
-        #self.proxy = Thread(target=self.q.run_socket, args=(self.sock,))#, args=(block=False))
-        #self.proxy.setDaemon(True)
-        #self.proxythread = threading.Thread(target=self.updateTBMG)
-        #self.proxythread.daemon = True
-        #self.proxythread.start()
         
-
-    
     def sendDrop(self):
         if self.intercepting:
             self.parent_conn.send('drop')
@@ -53,19 +44,19 @@ class ScapyBridge(object):
         if self.intercepting:
             text = str(self.tbmg.rawtext.get('0.0', END)).strip()
             print 'updating to:', text
-            self.parent_conn.send(text.decode('hex'))
+            self.parent_conn.send('raw')
+            self.parent_conn.send(text)
     
     def sendDisectUpdate(self):
         if not self.intercepting:
             return
-        print 'current:', str(raw(self.current_pack)).encode('hex')
+        #print 'current:', str(raw(self.current_pack)).encode('hex')
         if not self.gui_layers or len(self.tbmg.disectlist.interior.grid_slaves()) < 2:
             return
         for layer in self.gui_layers:
             if layer and layer in self.current_pack:
                 for pair in self.gui_layers[layer]:
-                    type1 = None  # correct type for feild
-                    exec ("type1 = type (self.current_pack['" + layer + "']." + pair[1].cget('text') + ")")
+                    type1 = getattr(self.current_pack[layer], pair[1].cget('text'))  # correct type for feild
                     type2 = None
                     value = None
                     try:
@@ -89,56 +80,41 @@ class ScapyBridge(object):
                     except Exception:
                         pass
                         # print value,'not HEX',e
-                    if type(value) == str and len(value) >= 4 and value[1] == '[' and value[
-                        -2] == ']' and type1 == type([]):
-                        print 'found array type', value
+                    if '['in value and ']'in value:#type(value) == str and len(value) >= 4 and value[1] == '[' and value[-2] == ']' and type1 == type([]):
+                        #print 'found array type:'+value
                         value = value[1:-1]
-                    if value == '"None"':
+                    elif value == '"None"':
                         if type1 == type(None):
                             continue
                         if type1 == int:
                             value = '0'
                         else:
                             value = 'None'
-                    if value == '""':
+                    elif value == '""':
                         value = 'None'
                     if layer == 'Raw' and pair[1].cget('text') == 'load':  # ping 8.8.4.4
-                        equal = self.current_pack[layer].load == value[1:-1]
-                        if not equal:
+                        if not self.current_pack[layer].load == value[1:-1].decode('hex'):
                             print("FOUND CHANGE in RAW!!!", value, value.encode('hex'))
                             print(self.current_pack['Raw'].load, self.current_pack['Raw'].load.encode('hex'))
                             print('------------------')
                             continue  # use default val
-                        self.current_pack['Raw'].load = value[1:-1]
+                        self.current_pack['Raw'].load = value[1:-1].decode('hex')
                         continue
                     #('checking if equal:', 'self.current_pack[\'DNS\'].qd == "\ndiscordapp\x03com"')
                     #self.current_pack['DNS'].qd == "
                     # TODO add protocol exceptions here!
-                    change = False
-                    
-                    equalstr = "self.current_pack['" + layer + "']." + pair[1].cget('text') + " == " + value
-                    print ('checking if equal:', equalstr)
-                    equal = eval(equalstr)
-                    if not equal:
-                        print("FOUND CHANGE!!!", value)
-                        print("self.current_pack['" + layer + "']." + pair[1].cget('text') + " == " + value + ")")
-                        exec ("print self.current_pack['" + layer + "']." + pair[1].cget('text'))
-                        exec ("type2 = type (" + value + ")")
-                        print('was:', type1, 'is:', type2)
-                        print('------------------')
-                    
-                    execute = "self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
-                    print('setting:', execute)
+                    #set value to packet
+                    #execute = "self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
+                    #print('setting:', execute)
                     try:
-                        exec (execute)
-                        exec ("type2 = type (self.current_pack['" + layer + "']." + pair[1].cget('text') + ")")
-                        if type1 != type2:
-                            print 'ERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR???', type1, type2
-                    except ValueError, ve:
-                        print 'FAILED-ValueErr', ve
-                    except gaierror, e:
-                        print(self.current_pack)
-                        print('GAI ERROR:', e)
+                        if getattr(self.current_pack[layer], pair[1].cget('text')) != eval(value):
+                            execute = "self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
+                            print('setting:', execute)
+                            print 'oldval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text')))
+                            setattr(self.current_pack[layer], pair[1].cget('text'), eval(value))
+                            print 'newval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text')))
+                    except Exception, e:
+                        print 'setattr err:',e,'->',"self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
         r = raw(self.current_pack)
         print('producing from disect:', r.encode('hex'))
         self.parent_conn.send(r)
@@ -201,7 +177,7 @@ class ScapyBridge(object):
                     try:
                         entry.insert(0, str(l.fields[f]).encode('utf8'))
                     except:
-                        print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
+                        #print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
                         entry.insert(0, str(l.fields[f]).encode('hex'))
                     self.gui_layers[l.name].append((layer, label, entry))
                     rownum += 1
@@ -266,7 +242,7 @@ class ScapyBridge(object):
                 addnointercptGUI()
     
     def proxyToggle(self):
-        print(not self.status)
+        #print(not self.status)
         self.status = not self.status
         if self.status:
             try:
@@ -300,15 +276,15 @@ class ScapyBridge(object):
                     self.clearRaw()
                     self.clearDisect()
                 #stop proxy
-                print 'stoping proxy'
-                self.intercepter.stop()
                 print('flushing...')
                 os.system('iptables -F')
                 os.system('iptables -X')
+                print 'stoping proxy'
+                self.intercepter.stop()
+                
             except Exception, e:
                 print 'proxy err:',e
                 pass
-
 
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
@@ -317,55 +293,69 @@ class ScapyBridge(object):
             print 'I should not be on...'
             return data, interceptor.NF_DROP
         eth = Ether(ll_data)
-        pkt = eth/IP(data)
-        print("Got a packet:",pkt.summary())
+        self.current_pack = eth/IP(data)#eth/IP(data)
+        org = eth/IP(data)
+        print("Got a packet:",self.current_pack.summary())
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
-                dofilter = bool(sniff(offline=pkt, filter=self.filter))
+                dofilter = bool(sniff(offline=self.current_pack, filter=self.filter))
                 if not dofilter:
                     return data, interceptor.NF_ACCEPT
             except Exception, e:
                 print 'Filter err:', self.filter, e
-                return raw(pkt), interceptor.NF_ACCEPT
+                return data, interceptor.NF_ACCEPT
         
         if self.intercepting:
             print 'intercepting'
             if self.filter and not dofilter:
                 print 'intercept, but not in filter'
                 if self.pcapfile:
-                    wrpcap(self.pcapfile, pkt, append=True)
-                    wrpcap(self.pcapfile[:-5] + '_mod.pcap', pkt, append=True)
-                return raw(pkt), interceptor.NF_ACCEPT
-            self.current_pack = pkt
+                    wrpcap(self.pcapfile, self.current_pack, append=True)
+                    wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
+                return data, interceptor.NF_ACCEPT
             self.clearDisect()
             self.clearRaw()
-            self._packet_disect_intercept(pkt)
-            self.tbmg.rawtext.insert('0.0', str(raw(pkt)).encode('hex'))
+            self._packet_disect_intercept(self.current_pack)
+            self.tbmg.rawtext.insert('0.0', str(raw(self.current_pack)).encode('hex'))
             recv = self.child_conn.recv()
             if recv == 'drop':
                 print 'DROPING'
                 return data, interceptor.NF_DROP
-            new_ptk = self.current_pack
-            try: #fix chksum and len
-                del(new_ptk['IP'].chksum)
-                del (new_ptk['TCP'].chksum)
+            elif recv == 'raw':
+                recv = str(self.child_conn.recv())
+                self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
+            elif recv == 'disect':#already been modded
+                pass
+            
+            print 'old chksum:', self.current_pack['IP'].chksum
+            try:  # fix chksum and len
+                del (self.current_pack['IP'].chksum)
             except:
                 pass
-            new_ptk.show2()
-            print 'Changed:', pkt.summary()
-            print 'To:', new_ptk.summary()
+            try:
+                del (self.current_pack['TCP'].chksum)
+            except:
+                pass
+            try:
+                del (self.current_pack['ICMP'].chksum)
+            except:
+                pass
+            self.current_pack = self.current_pack.__class__(str(self.current_pack))
             if self.pcapfile:
-                wrpcap(self.pcapfile, pkt, append=True)
-                wrpcap(self.pcapfile[:-5] + '_mod.pcap', new_ptk, append=True)
-            return raw(new_ptk[1]), interceptor.NF_ACCEPT
+                wrpcap(self.pcapfile, org, append=True)
+                wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
+            print 'sending updated....',raw(self.current_pack)
+            print 'rather than........',data
+            #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
+            return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
         else:
-            self.tbmg.disecttext.insert('3.0', self._packet_disect_nointercept(pkt))
-            self.tbmg.rawtext.insert('0.0', '\n- ' + str(raw(pkt)).encode('hex'))
+            self.tbmg.disecttext.insert('3.0', self._packet_disect_nointercept(self.current_pack))
+            self.tbmg.rawtext.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
             if self.pcapfile:
-                wrpcap(self.pcapfile, pkt, append=True)
-                wrpcap(self.pcapfile[:-5] + '_mod.pcap', pkt, append=True)
-            return raw(pkt), interceptor.NF_ACCEPT
+                wrpcap(self.pcapfile, self.current_pack, append=True)
+                wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
+            return raw(self.current_pack), interceptor.NF_ACCEPT
     # ran as a process
     #def _runProxy(self):
     
