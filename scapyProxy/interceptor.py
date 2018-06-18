@@ -252,14 +252,14 @@ class Interceptor(object):
 					bts = recv(65535)
 				except socket_timeout:
 					continue
-				print('gotbits',str(bts))
+				#print('gotbits',str(bts))
 				thread = threading.Thread(
 					target=handle_packet,
 					args=[nfq_handle, bts, len(bts)]
 				)
 				thread.setDaemon(True)
 				thread.start()
-				print 'dealing w/ packet'
+				#print 'dealing w/ packet'
 				#handle_packet(nfq_handle, bts, 65535)
 				#handle_packet(nfq_handle, bts, len(bts))#if this ran in background, then packets could recv w/out verdict
 		except OSError as ex:

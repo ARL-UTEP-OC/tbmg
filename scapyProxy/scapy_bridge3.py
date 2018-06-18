@@ -292,23 +292,6 @@ class ScapyBridge(object):
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
         # Here is where the magic happens.
-        print('intercepter queue0:',self.intercepter.queues[0])
-        #print('queue:',dir(self.intercepter.queues[0][1]))
-        #a=0
-        #for i in self.intercepter.queues[0]:
-        #    print(a,i)#,dir(i))
-        #    a+=1
-        #    try:
-        #        print i.contents,dir(i.contents)
-        #    except:
-        #        pass
-        #print('contents:',self.intercepter.queues[0][1].contents)
-        print dir(self.intercepter.queues[0][2])
-        print 'content:',self.intercepter.queues[0][2].contents, dir(self.intercepter.queues[0][2].contents)
-        print self.intercepter.queues[0][2].contents.nfnlh.contents,dir(self.intercepter.queues[0][2].contents.nfnlh.contents)
-        print self.intercepter.queues[0][2].contents.nfnlssh.contents,dir(self.intercepter.queues[0][2].contents.nfnlssh.contents)
-        print self.intercepter.queues[0][2].contents.qh_list.contents,dir(self.intercepter.queues[0][2].contents.qh_list.contents)
-        print '-------'
         if not self.status:
             print 'I should not be on...'
             return data, interceptor.NF_DROP
@@ -326,28 +309,32 @@ class ScapyBridge(object):
             except Exception, e:
                 print 'Filter err:', self.filter, e
                 return data, interceptor.NF_ACCEPT
-        
+
+        # lock - one at a time get to render,
+        print 'want lock'
+        self.display_lock.acquire()
+        print 'got lock for '
+        if not self.status:
+            print 'I should not be on...'
+            self.display_lock.release()
+            return data, interceptor.NF_DROP
         self.current_pack = packet
+        
         if self.intercepting:
             print 'intercepting'
             if self.filter and not dofilter:
                 print 'intercept, but not in filter'
                 if self.pcapfile:
-                    wrpcap(self.pcapfile, self.current_pack, append=True)
-                    wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
+                    wrpcap(self.pcapfile, org, append=True)
+                    wrpcap(self.pcapfile[:-5] + '_mod.pcap', org, append=True)
+                self.display_lock.release()
                 return data, interceptor.NF_ACCEPT
             # list packet arival
             id = time.time()  # self.getID()
-            print 'populating net_queue', str(id)
+            #TODO add command to button to skip+accept to that packet
             button = Button(self.tbmg.netqueueframe.interior, text=str(id) + ":" + packet.summary(), width="80")
-            print 'made button'
             button.pack()
             self.packet_queue.append([1, packet, id, button])
-
-            # lock - one at a time get to render,
-            print 'want lock',str(id)
-            self.display_lock.acquire()
-            print 'got lock for ',str(id)
             self.clearDisect()
             self.clearRaw()
             self._packet_disect_intercept(self.current_pack)
@@ -380,6 +367,8 @@ class ScapyBridge(object):
             except:
                 pass
             self.current_pack = self.current_pack.__class__(str(self.current_pack))
+            self.clearDisect()
+            self.clearRaw()
             #handle updated packet
             if self.pcapfile:
                 wrpcap(self.pcapfile, org, append=True)
@@ -398,4 +387,5 @@ class ScapyBridge(object):
             if self.pcapfile:
                 wrpcap(self.pcapfile, self.current_pack, append=True)
                 wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
+            self.display_lock.release()
             return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
