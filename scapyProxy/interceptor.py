@@ -242,6 +242,7 @@ class Interceptor(object):
 	def __init__(self):
 		self._netfilterqueue_configs = []
 		self._is_running = False
+		self.queues=[]
 
 	@staticmethod
 	def verdict_trigger_cycler(recv, nfq_handle, obj):
@@ -251,9 +252,16 @@ class Interceptor(object):
 					bts = recv(65535)
 				except socket_timeout:
 					continue
-
+				print('gotbits',str(bts))
+				thread = threading.Thread(
+					target=handle_packet,
+					args=[nfq_handle, bts, len(bts)]
+				)
+				thread.setDaemon(True)
+				thread.start()
+				print 'dealing w/ packet'
 				#handle_packet(nfq_handle, bts, 65535)
-				handle_packet(nfq_handle, bts, len(bts))
+				#handle_packet(nfq_handle, bts, len(bts))#if this ran in background, then packets could recv w/out verdict
 		except OSError as ex:
 			# eg "Bad file descriptor": started and nothing read yet
 			#logger.debug(ex)
@@ -324,6 +332,7 @@ class Interceptor(object):
 			verdictthread=thread, handler=c_handler
 		)
 		self._netfilterqueue_configs.append(qconfig)
+		self.queues.append([queue_id,queue,nfq_handle,nf,fd,nfq_socket,thread])
 
 	def start(self, verdict_callback, queue_ids, ctx=None):
 		"""

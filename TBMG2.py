@@ -170,10 +170,12 @@ class Application(Frame):
         self.disectLable = Label(self.disectlist.interior, text='DISECT VIEW\n----\n')
         self.disectLable.grid(row=0,column=0)
         '''
-        #self.send = Button(page5, text='Send')
-        #self.send.grid(row=4, column=0)
-        
-        
+        self.netqueueframe = VerticalScrolledFrame(page5, height=100, width=50)
+        self.netqueueframe.grid(row=3, column=4)
+        self.netqueueLable = Label(self.netqueueframe.interior, text='NET QUEUE\n----\n')
+        self.netqueueLable.pack()
+        #Button(self.netqueueframe.interior,text='eg icmp').pack()
+        #Button(self.netqueueframe.interior, text='eg tcp').pack()
         self.page5 = page5
         
 

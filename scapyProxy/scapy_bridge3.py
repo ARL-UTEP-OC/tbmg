@@ -20,10 +20,11 @@ class ScapyBridge(object):
     
     def __init__(self, tbmg_):
         # output catches outgoing packets, input from other machines, and forward for mitm
-        self.iptablesr = "iptables -A OUTPUT -j NFQUEUE --queue-num 0; iptables -A FORWARD -j NFQUEUE --queue-num 0; iptables -A INPUT -j NFQUEUE --queue-num 0"
+        #self.iptablesr = "iptables -A OUTPUT -j NFQUEUE --queue-num 0; iptables -A FORWARD -j NFQUEUE --queue-num 0; iptables -A INPUT -j NFQUEUE --queue-num 0"
+        
         #self.iptablesr = ""#""iptables -t nat -A PREROUTING -j NFQUEUE --queue-num 2"
-        #self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:2; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:2; iptables -I INPUT 1 -j NFQUEUE --queue-balance 0:2;'
-        #self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-num 0; iptables -I FORWARD 2 -j NFQUEUE --queue-num 0; iptables -I INPUT 3 -j NFQUEUE --queue-num 0'
+        self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:19; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:19; iptables -I INPUT 1 -j NFQUEUE --queue-balance 0:19;'
+        #self.iptablesr = 'iptables -I INPUT 1 -j NFQUEUE --queue-balance 0:2'
         self.tbmg = tbmg_
         self.q = None
         self.status = False
@@ -35,6 +36,8 @@ class ScapyBridge(object):
         self.current_pack = None
         self.sock = None
         self.intercepter = interceptor.Interceptor()
+        self.packet_queue = [] #[x] = (prio#, scapy_packet)
+        self.display_lock = Lock()
         
     def sendDrop(self):
         if self.intercepting:
@@ -252,7 +255,7 @@ class ScapyBridge(object):
                 self.intercepter = interceptor.Interceptor()
                 try:
                     print 'about to start proxy'
-                    self.intercepter.start(self.callback, queue_ids=[0])
+                    self.intercepter.start(self.callback, queue_ids=range(20))
                     print ('moving after proxy start')
                 except Exception, e:
                     print 'COUNDT START PROXY',e
@@ -289,17 +292,34 @@ class ScapyBridge(object):
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
         # Here is where the magic happens.
+        print('intercepter queue0:',self.intercepter.queues[0])
+        #print('queue:',dir(self.intercepter.queues[0][1]))
+        #a=0
+        #for i in self.intercepter.queues[0]:
+        #    print(a,i)#,dir(i))
+        #    a+=1
+        #    try:
+        #        print i.contents,dir(i.contents)
+        #    except:
+        #        pass
+        #print('contents:',self.intercepter.queues[0][1].contents)
+        print dir(self.intercepter.queues[0][2])
+        print 'content:',self.intercepter.queues[0][2].contents, dir(self.intercepter.queues[0][2].contents)
+        print self.intercepter.queues[0][2].contents.nfnlh.contents,dir(self.intercepter.queues[0][2].contents.nfnlh.contents)
+        print self.intercepter.queues[0][2].contents.nfnlssh.contents,dir(self.intercepter.queues[0][2].contents.nfnlssh.contents)
+        print self.intercepter.queues[0][2].contents.qh_list.contents,dir(self.intercepter.queues[0][2].contents.qh_list.contents)
+        print '-------'
         if not self.status:
             print 'I should not be on...'
             return data, interceptor.NF_DROP
         eth = Ether(ll_data)
-        self.current_pack = eth/IP(data)#eth/IP(data)
+        packet = eth/IP(data)#eth/IP(data)
         org = eth/IP(data)
-        print("Got a packet:",self.current_pack.summary())
+        print("Got a packet:",packet.summary())
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
-                dofilter = bool(sniff(offline=self.current_pack['IP'], filter=self.filter))
+                dofilter = bool(sniff(offline=packet['IP'], filter=self.filter))
                 print 'filter:',dofilter
                 if not dofilter:
                     return data, interceptor.NF_ACCEPT
@@ -307,6 +327,7 @@ class ScapyBridge(object):
                 print 'Filter err:', self.filter, e
                 return data, interceptor.NF_ACCEPT
         
+        self.current_pack = packet
         if self.intercepting:
             print 'intercepting'
             if self.filter and not dofilter:
@@ -315,6 +336,18 @@ class ScapyBridge(object):
                     wrpcap(self.pcapfile, self.current_pack, append=True)
                     wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
                 return data, interceptor.NF_ACCEPT
+            # list packet arival
+            id = time.time()  # self.getID()
+            print 'populating net_queue', str(id)
+            button = Button(self.tbmg.netqueueframe.interior, text=str(id) + ":" + packet.summary(), width="80")
+            print 'made button'
+            button.pack()
+            self.packet_queue.append([1, packet, id, button])
+
+            # lock - one at a time get to render,
+            print 'want lock',str(id)
+            self.display_lock.acquire()
+            print 'got lock for ',str(id)
             self.clearDisect()
             self.clearRaw()
             self._packet_disect_intercept(self.current_pack)
@@ -323,9 +356,13 @@ class ScapyBridge(object):
             recv = self.child_conn.recv()
             if recv == 'drop':
                 print 'DROPING'
+                self.display_lock.release()
+                button.destroy()
+                #TODO efficently delte self from packet queue
                 return data, interceptor.NF_DROP
             elif recv == 'raw':
                 recv = str(self.child_conn.recv())
+                #TODO make more definite way...
                 self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
             elif recv == 'disect':#already been modded
                 pass
@@ -350,6 +387,9 @@ class ScapyBridge(object):
             print 'sending updated....',raw(self.current_pack)
             print 'rather than........',data
             #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
+            self.display_lock.release()
+            button.destroy()
+            # TODO efficently delte self from packet queue
             return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
         else:
             print 'not intercpeting..'
