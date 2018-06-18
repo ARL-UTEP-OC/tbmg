@@ -38,6 +38,8 @@ class ScapyBridge(object):
         self.intercepter = interceptor.Interceptor()
         self.packet_queue = [] #[x] = (prio#, scapy_packet)
         self.display_lock = Lock()
+        self.pack_num_counter=1
+        self.skip_to_pack_num=0#use me to skip ahead
         
     def sendDrop(self):
         if self.intercepting:
@@ -198,15 +200,7 @@ class ScapyBridge(object):
         return capture.getvalue()+'\n----------------------------------\n'
     
     def interceptToggle(self):
-        if self.intercepting:
-            self.parent_conn.send('drop')
-            time.sleep(.1)
-            while self.child_conn.poll():
-                self.child_conn.recv()
-            self.clearRaw()
-            self.clearDisect()
         self.intercepting = not self.intercepting
-        print 'intercpet is now', self.intercepting
         
         def addnointercptGUI():
             self.tbmg.disecttext = Text(self.tbmg.page5, height=50, width=55)
@@ -243,6 +237,14 @@ class ScapyBridge(object):
                 pass
             else:
                 addnointercptGUI()
+        print 'intercpet is now', self.intercepting
+        if not self.intercepting:
+            self.parent_conn.send('accept')
+            # time.sleep(.5)
+            # while self.child_conn.poll():
+            #    self.child_conn.recv()
+            self.clearRaw()
+            self.clearDisect()
     
     def proxyToggle(self):
         #print(not self.status)
@@ -291,14 +293,24 @@ class ScapyBridge(object):
 
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
+        def skipAhead(dst_num):
+            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
+            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
+            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
+            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
+            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
+            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
+            self.skip_to_pack_num = dst_num
+            self.parent_conn.send('accept')
         # Here is where the magic happens.
         if not self.status:
             print 'I should not be on...'
             return data, interceptor.NF_DROP
-        eth = Ether(ll_data)
-        packet = eth/IP(data)#eth/IP(data)
-        org = eth/IP(data)
-        print("Got a packet:",packet.summary())
+        num = self.pack_num_counter
+        self.pack_num_counter +=1 # may need to make this thread safe
+        packet = Ether(ll_data)/IP(data)#eth/IP(data)
+        org = Ether(ll_data)/IP(data)
+        print("Got a packet "+str(num))#+":", packet.summary())
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
@@ -309,17 +321,34 @@ class ScapyBridge(object):
             except Exception, e:
                 print 'Filter err:', self.filter, e
                 return data, interceptor.NF_ACCEPT
-
+        
+        # list packet arival
+        if self.intercepting:
+            id = time.time()  # self.getID()
+            button = Button(self.tbmg.netqueueframe.interior,text=str(num) + ":" + packet.summary(),
+                            width="80", command=lambda: skipAhead(num))
+            button.pack()
+            self.packet_queue.append([1, packet, id, button])
+        
         # lock - one at a time get to render,
         print 'want lock'
         self.display_lock.acquire()
-        print 'got lock for '
+        print 'got lock for ',str(num)
         if not self.status:
             print 'I should not be on...'
             self.display_lock.release()
-            return data, interceptor.NF_DROP
-        self.current_pack = packet
+            return data, interceptor.NF_ACCEPT
+        #if self.skip_to_pack_num:
+        if num < self.skip_to_pack_num:
+            print 'skipping! im at',str(num)
+            button.destroy()
+            self.display_lock.release()
+            return data, interceptor.NF_ACCEPT
+        elif num == self.skip_to_pack_num:
+            print 'hit num.im at',str(num)
+            self.skip_to_pack_num=0
         
+        self.current_pack = packet
         if self.intercepting:
             print 'intercepting'
             if self.filter and not dofilter:
@@ -329,16 +358,13 @@ class ScapyBridge(object):
                     wrpcap(self.pcapfile[:-5] + '_mod.pcap', org, append=True)
                 self.display_lock.release()
                 return data, interceptor.NF_ACCEPT
-            # list packet arival
-            id = time.time()  # self.getID()
-            #TODO add command to button to skip+accept to that packet
-            button = Button(self.tbmg.netqueueframe.interior, text=str(id) + ":" + packet.summary(), width="80")
-            button.pack()
-            self.packet_queue.append([1, packet, id, button])
+            
+            #display packet
             self.clearDisect()
             self.clearRaw()
             self._packet_disect_intercept(self.current_pack)
             self.tbmg.rawtext.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+            
             #recive data from GUI
             recv = self.child_conn.recv()
             if recv == 'drop':
@@ -347,12 +373,18 @@ class ScapyBridge(object):
                 button.destroy()
                 #TODO efficently delte self from packet queue
                 return data, interceptor.NF_DROP
+            elif recv == 'accept':
+                print "ACCEPTING"
+                self.display_lock.release()
+                button.destroy()
+                return data, interceptor.NF_ACCEPT
             elif recv == 'raw':
                 recv = str(self.child_conn.recv())
                 #TODO make more definite way...
                 self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
             elif recv == 'disect':#already been modded
                 pass
+            
             # fix chksum and len
             try:
                 del (self.current_pack['IP'].chksum)
@@ -367,6 +399,7 @@ class ScapyBridge(object):
             except:
                 pass
             self.current_pack = self.current_pack.__class__(str(self.current_pack))
+            
             self.clearDisect()
             self.clearRaw()
             #handle updated packet
@@ -382,6 +415,10 @@ class ScapyBridge(object):
             return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
         else:
             print 'not intercpeting..'
+            try:
+                button.destroy()
+            except:
+                pass
             self.tbmg.disecttext.insert('3.0', self._packet_disect_nointercept(self.current_pack))
             self.tbmg.rawtext.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
             if self.pcapfile:
