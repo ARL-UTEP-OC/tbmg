@@ -174,8 +174,38 @@ class Application(Frame):
         self.netqueueframe.grid(row=3, column=4)
         self.netqueueLable = Label(self.netqueueframe.interior, text='NET QUEUE\n----\n')
         self.netqueueLable.pack()
-        #Button(self.netqueueframe.interior,text='eg icmp').pack()
-        #Button(self.netqueueframe.interior, text='eg tcp').pack()
+        
+        '''
+        #FOR RECIVING
+        self.rawtextR = Text(page5, height=50, width=55)
+        self.rawtextscrollR = Scrollbar(page5)
+        self.rawtextscrollR.config(command=self.rawtextR.yview)
+        self.rawtextR.config(yscrollcommand=self.rawtextscrollR.set)
+        self.rawtextR.grid(row=4, column=0)
+        self.rawtextscrollR.grid(row=4, column=1)
+        self.rawtextR.insert(END, 'RAWVIEW\n---\n')
+
+        # for not intercepting
+        self.disecttextR = Text(page5, height=50, width=55)
+        self.disecttextscrollR = Scrollbar(page5)
+        self.disecttextscrollR.config(command=self.disecttextR.yview)
+        self.disecttextR.config(yscrollcommand=self.disecttextscrollR.set)
+        self.disecttextR.grid(row=4, column=2)
+        self.disecttextscrollR.grid(row=4, column=3)
+        self.disecttextR.insert(END, 'DISECT\n---\n')
+        self.disectlistR = None
+        self.disectLableR = None
+        #for intercepting
+        #self.disectlist = VerticalScrolledFrame(page5,height=100,width=50)
+        #self.disectlist.grid(row=3, column=2)
+        #self.disectLable = Label(self.disectlist.interior, text='DISECT VIEW\n----\n')
+        #self.disectLable.grid(row=0,column=0)
+        self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=50)
+        self.netqueueframeR.grid(row=4, column=4)
+        self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
+        self.netqueueLableR.pack()
+        '''
+        
         self.page5 = page5
         
 
