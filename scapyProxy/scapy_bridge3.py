@@ -98,13 +98,16 @@ class ScapyBridge(object):
                     elif value == '""':
                         value = 'None'
                     if layer == 'Raw' and pair[1].cget('text') == 'load':  # ping 8.8.4.4
-                        if not self.current_pack[layer].load == value[1:-1].decode('hex'):
-                            print("FOUND CHANGE in RAW!!!", value, value.encode('hex'))
-                            print(self.current_pack['Raw'].load, self.current_pack['Raw'].load.encode('hex'))
-                            print('------------------')
-                            continue  # use default val
-                        self.current_pack['Raw'].load = value[1:-1].decode('hex')
-                        continue
+                        try:
+                            if not self.current_pack[layer].load == value[1:-1].decode('hex'):
+                                print("FOUND CHANGE in RAW!!!", value, value.encode('hex'))
+                                print(self.current_pack['Raw'].load, self.current_pack['Raw'].load.encode('hex'))
+                                print('------------------')
+                                continue  # use default val
+                            self.current_pack['Raw'].load = value[1:-1].decode('hex')
+                            continue
+                        except:
+                            pass #non hex decodable
                     #('checking if equal:', 'self.current_pack[\'DNS\'].qd == "\ndiscordapp\x03com"')
                     #self.current_pack['DNS'].qd == "
                     # TODO add protocol exceptions here!
@@ -244,7 +247,10 @@ class ScapyBridge(object):
             # while self.child_conn.poll():
             #    self.child_conn.recv()
             self.clearRaw()
-            self.clearDisect()
+            try:
+                self.clearDisect()
+            except:
+                pass
     
     def proxyToggle(self):
         #print(not self.status)
@@ -270,11 +276,12 @@ class ScapyBridge(object):
                 print 'start proxy err', e
         else:
             try:
-                print 'droping packs'
-                #clean gui
+                #TODO change to accept the exact amount of packs
+                print 'mass accept packs'
+                #clean gui/packs
                 if self.intercepting:
-                    for i in range(20):
-                        self.parent_conn.send('drop')
+                    for i in range(40):
+                        self.parent_conn.send('accept')
                     time.sleep(.3)
                     while self.child_conn.poll():
                         self.child_conn.recv()
@@ -310,18 +317,17 @@ class ScapyBridge(object):
         self.pack_num_counter +=1 # may need to make this thread safe
         packet = Ether(ll_data)/IP(data)#eth/IP(data)
         org = Ether(ll_data)/IP(data)
-        print("Got a packet "+str(num))#+":", packet.summary())
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
                 dofilter = bool(sniff(offline=packet['IP'], filter=self.filter))
-                print 'filter:',dofilter
+                #print 'filter:',dofilter
                 if not dofilter:
                     return data, interceptor.NF_ACCEPT
             except Exception, e:
                 print 'Filter err:', self.filter, e
                 return data, interceptor.NF_ACCEPT
-        
+        print("Got a packet " + str(num))  # +":", packet.summary())
         # list packet arival
         if self.intercepting:
             id = time.time()  # self.getID()
@@ -337,6 +343,10 @@ class ScapyBridge(object):
         if not self.status:
             print 'I should not be on...'
             self.display_lock.release()
+            try:
+                button.destroy()
+            except:
+                pass
             return data, interceptor.NF_ACCEPT
         #if self.skip_to_pack_num:
         if num < self.skip_to_pack_num:
@@ -366,6 +376,7 @@ class ScapyBridge(object):
             self.tbmg.rawtext.insert('0.0', str(raw(self.current_pack)).encode('hex'))
             
             #recive data from GUI
+            
             recv = self.child_conn.recv()
             if recv == 'drop':
                 print 'DROPING'
@@ -375,6 +386,8 @@ class ScapyBridge(object):
                 return data, interceptor.NF_DROP
             elif recv == 'accept':
                 print "ACCEPTING"
+                self.clearDisect()
+                self.clearRaw()
                 self.display_lock.release()
                 button.destroy()
                 return data, interceptor.NF_ACCEPT
@@ -394,12 +407,13 @@ class ScapyBridge(object):
                 del (self.current_pack['TCP'].chksum)
             except:
                 pass
+            '''
             try:
                 del (self.current_pack['ICMP'].chksum)
             except:
                 pass
             self.current_pack = self.current_pack.__class__(str(self.current_pack))
-            
+            '''
             self.clearDisect()
             self.clearRaw()
             #handle updated packet

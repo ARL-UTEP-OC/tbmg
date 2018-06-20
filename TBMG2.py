@@ -136,13 +136,13 @@ class Application(Frame):
         self.drop = Button(page5, text='Drop', command=self.scapybridge.sendDrop)
         self.drop.grid(row=2, column=3)
         
-        def setFilter():
+        def setFilter(args=None):
             self.scapybridge.filter = self.proxyfilter.get()
             print 'using filter:', self.scapybridge.filter
         self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
         self.defaultproxyfiltertext.grid(row=1, column=0)
         self.proxyfilter = Entry(page5)
-        self.proxyfilter.bind("<Return>", setFilter())
+        self.proxyfilter.bind("<Return>", setFilter)
         self.proxyfilter.grid(row=1, column=1)
         
         self.rawtext = Text(page5, height=50, width=55)
