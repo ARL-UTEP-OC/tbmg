@@ -18,13 +18,18 @@ import sys
 
 class ScapyBridge(object):
     
-    def __init__(self, tbmg_):
+    def __init__(self, tbmg_, is_outgoing_=False):
         # output catches outgoing packets, input from other machines, and forward for mitm
         #self.iptablesr = "iptables -A OUTPUT -j NFQUEUE --queue-num 0; iptables -A FORWARD -j NFQUEUE --queue-num 0; iptables -A INPUT -j NFQUEUE --queue-num 0"
-        
         #self.iptablesr = ""#""iptables -t nat -A PREROUTING -j NFQUEUE --queue-num 2"
-        self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:19; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:19; iptables -I INPUT 1 -j NFQUEUE --queue-balance 0:19;'
         #self.iptablesr = 'iptables -I INPUT 1 -j NFQUEUE --queue-balance 0:2'
+        self.is_outgoing = is_outgoing_
+        self.iptablesr = ''
+        if self.is_outgoing:
+            self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:19; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:19'
+        else:
+            self.iptablesr = 'iptables -I INPUT 1 -j NFQUEUE --queue-balance 20:39'
+        
         self.tbmg = tbmg_
         self.q = None
         self.status = False
@@ -34,7 +39,6 @@ class ScapyBridge(object):
         self.intercepting = False
         self.gui_layers = {}  # gui_layers['IP'] = [(Label(text=layer),Label(text=feild_name),Entry(text=feild_value)),(L,E),...]
         self.current_pack = None
-        self.sock = None
         self.intercepter = interceptor.Interceptor()
         self.packet_queue = [] #[x] = (prio#, scapy_packet)
         self.display_lock = Lock()
@@ -47,7 +51,10 @@ class ScapyBridge(object):
     
     def sendRawUpdate(self):
         if self.intercepting:
-            text = str(self.tbmg.rawtext.get('0.0', END)).strip()
+            if self.is_outgoing:
+                text = str(self.tbmg.rawtextS.get('0.0', END)).strip()
+            else:
+                text = str(self.tbmg.rawtextR.get('0.0', END)).strip()
             print 'updating to:', text
             self.parent_conn.send('raw')
             self.parent_conn.send(text)
@@ -56,8 +63,12 @@ class ScapyBridge(object):
         if not self.intercepting:
             return
         #print 'current:', str(raw(self.current_pack)).encode('hex')
-        if not self.gui_layers or len(self.tbmg.disectlist.interior.grid_slaves()) < 2:
-            return
+        if self.is_outgoing:
+            if not self.gui_layers or len(self.tbmg.disectlistS.interior.grid_slaves()) < 2:
+                return
+        else:
+            if not self.gui_layers or len(self.tbmg.disectlistR.interior.grid_slaves()) < 2:
+                return
         for layer in self.gui_layers:
             if layer and layer in self.current_pack:
                 for pair in self.gui_layers[layer]:
@@ -131,68 +142,128 @@ class ScapyBridge(object):
         self.clearRaw()
     
     def clearDisect(self):
-        for w in self.tbmg.disectlist.interior.grid_slaves():
-            w.destroy()
+        if self.is_outgoing:
+            for w in self.tbmg.disectlistS.interior.grid_slaves():
+                w.destroy()
+        else:
+            for w in self.tbmg.disectlistR.interior.grid_slaves():
+                w.destroy()
     
     def clearRaw(self):
-        self.tbmg.rawtext.delete(1.0, END)
+        if self.is_outgoing:
+            self.tbmg.rawtextS.delete(1.0, END)
+        else:
+            self.tbmg.rawtextS.delete(1.0, END)
     
     def _packet_disect_intercept(self, pack):
         self.clearDisect()
         self.gui_layers = {}
         rownum = 1
         #$pack.show()
-        for i in range(10):
-            try:
-                l = pack.getlayer(i)
-                if not l:
-                    continue
-                self.gui_layers[l.name] = []
-                layer = Label(self.tbmg.disectlist.interior, text=l.name)
-                layer.grid(row=rownum, column=0)
-                rownum += 1
-                if l.name == 'Ethernet' or l.name == 'Ether':
-                    label = Label(self.tbmg.disectlist.interior, text='src')
-                    label.grid(row=rownum, column=1)
-                    entry = Entry(self.tbmg.disectlist.interior, width=30)
-                    entry.grid(row=rownum, column=2)
-                    entry.insert(0, str(pack[0].src).encode('utf8'))
-                    self.gui_layers[l.name].append((layer, label, entry))
-                    rownum += 1
+        if self.is_outgoing:
+            for i in range(10):
+                try:
+                    l = pack.getlayer(i)
+                    if not l:
+                        continue
+                    self.gui_layers[l.name] = []
                     
-                    label = Label(self.tbmg.disectlist.interior, text='dst')
-                    label.grid(row=rownum, column=1)
-                    entry = Entry(self.tbmg.disectlist.interior, width=30)
-                    entry.grid(row=rownum, column=2)
-                    entry.insert(0, str(pack[0].dst).encode('utf8'))
-                    self.gui_layers[l.name].append((layer, label, entry))
+                    layer = Label(self.tbmg.disectlistS.interior, text=l.name)
+                    layer.grid(row=rownum, column=0)
                     rownum += 1
-                    
-                    label = Label(self.tbmg.disectlist.interior, text='type')
-                    label.grid(row=rownum, column=1)
-                    entry = Entry(self.tbmg.disectlist.interior, width=30)
-                    entry.grid(row=rownum, column=2)
-                    entry.insert(0, str(pack[0].type).encode('utf8'))
-                    self.gui_layers[l.name].append((layer, label, entry))
+                    if l.name == 'Ethernet' or l.name == 'Ether':
+                        label = Label(self.tbmg.disectlistS.interior, text='src')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistS.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].src).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                        
+                        label = Label(self.tbmg.disectlistS.interior, text='dst')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistS.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].dst).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                        
+                        label = Label(self.tbmg.disectlistS.interior, text='type')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistS.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].type).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                        continue
+                        
+                    for f in l.fields:
+                        label = Label(self.tbmg.disectlistS.interior, text=str(f))
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistS.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        try:
+                            entry.insert(0, str(l.fields[f]).encode('utf8'))
+                        except:
+                            #print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
+                            entry.insert(0, str(l.fields[f]).encode('hex'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                except Exception, e:
+                    print 'print disect yes intercpet error', e
+                    break
+        else:
+            for i in range(10):
+                try:
+                    l = pack.getlayer(i)
+                    if not l:
+                        continue
+                    self.gui_layers[l.name] = []
+            
+                    layer = Label(self.tbmg.disectlistR.interior, text=l.name)
+                    layer.grid(row=rownum, column=0)
                     rownum += 1
-                    continue
-                    
-                for f in l.fields:
-                    label = Label(self.tbmg.disectlist.interior, text=str(f))
-                    label.grid(row=rownum, column=1)
-                    entry = Entry(self.tbmg.disectlist.interior, width=30)
-                    entry.grid(row=rownum, column=2)
-                    try:
-                        entry.insert(0, str(l.fields[f]).encode('utf8'))
-                    except:
-                        #print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
-                        entry.insert(0, str(l.fields[f]).encode('hex'))
-                    self.gui_layers[l.name].append((layer, label, entry))
-                    rownum += 1
-            except Exception, e:
-                print 'print disect yes intercpet error', e
-                break
-        # self.tbmg.update()
+                    if l.name == 'Ethernet' or l.name == 'Ether':
+                        label = Label(self.tbmg.disectlistR.interior, text='src')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistR.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].src).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                
+                        label = Label(self.tbmg.disectlistR.interior, text='dst')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistR.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].dst).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                
+                        label = Label(self.tbmg.disectlistR.interior, text='type')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistR.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].type).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                        continue
+            
+                    for f in l.fields:
+                        label = Label(self.tbmg.disectlistR.interior, text=str(f))
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistR.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        try:
+                            entry.insert(0, str(l.fields[f]).encode('utf8'))
+                        except:
+                            # print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
+                            entry.insert(0, str(l.fields[f]).encode('hex'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                except Exception, e:
+                    print 'print disect yes intercpet error', e
+                    break
     
     def _packet_disect_nointercept(self, pack):
         capture = StringIO()
@@ -204,48 +275,81 @@ class ScapyBridge(object):
     
     def interceptToggle(self):
         self.intercepting = not self.intercepting
-        
-        def addnointercptGUI():
-            self.tbmg.disecttext = Text(self.tbmg.page5, height=50, width=55)
-            self.tbmg.disecttextscroll = Scrollbar(self.tbmg.page5)
-            self.tbmg.disecttextscroll.config(command=self.tbmg.disecttext.yview)
-            self.tbmg.disecttext.config(yscrollcommand=self.tbmg.disecttextscroll.set)
-            self.tbmg.disecttext.grid(row=3, column=2)
-            self.tbmg.disecttextscroll.grid(row=3, column=3)
-            self.tbmg.disecttext.insert(END, 'DISECT\n---\n')
-        
-        def addintercptGUI():
-            self.tbmg.disectlist = VerticalScrolledFrame(self.tbmg.page5, height=100, width=50)
-            self.tbmg.disectlist.grid(row=3, column=2)
-            self.tbmg.disectLable = Label(self.tbmg.disectlist.interior, text='DISECT VIEW\n----\n')
-            self.tbmg.disectLable.grid(row=0, column=0)
-        
-        if self.intercepting:
-            if self.tbmg.disecttext or self.tbmg.disecttextscroll:
-                self.tbmg.disecttext.destroy()
-                self.tbmg.disecttext = None
-                self.tbmg.disecttextscroll.destroy()
-                self.tbmg.disecttextscroll = None
-            if self.tbmg.disectlist and self.tbmg.disectLable:
-                pass
+        if self.is_outgoing:
+            def addnointercptGUI():
+                self.tbmg.disecttextS = Text(self.tbmg.page5, height=30, width=55)
+                self.tbmg.disecttextscrollS = Scrollbar(self.tbmg.page5)
+                self.tbmg.disecttextscrollS.config(command=self.tbmg.disecttextS.yview)
+                self.tbmg.disecttextS.config(yscrollcommand=self.tbmg.disecttextscrollS.set)
+                self.tbmg.disecttextS.grid(row=3, column=2)
+                self.tbmg.disecttextscrollS.grid(row=3, column=3)
+                self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
+            
+            def addintercptGUI():
+                self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.page5, height=30, width=50)
+                self.tbmg.disectlistS.grid(row=3, column=2)
+                self.tbmg.disectLableS = Label(self.tbmg.disectlistS.interior, text='DISECT VIEW\n----\n')
+                self.tbmg.disectLableS.grid(row=0, column=0)
+            
+            if self.intercepting:
+                if self.tbmg.disecttextS or self.tbmg.disecttextscrollS:
+                    self.tbmg.disecttextS.destroy()
+                    self.tbmg.disecttextS = None
+                    self.tbmg.disecttextscrollS.destroy()
+                    self.tbmg.disecttextscrollS = None
+                if self.tbmg.disectlistS and self.tbmg.disectLableS:
+                    pass
+                else:
+                    addintercptGUI()
             else:
-                addintercptGUI()
+                if self.tbmg.disectlistS or self.tbmg.disectLableS:
+                    self.tbmg.disectlistS.destroy()
+                    self.tbmg.disectlistS = None
+                    self.tbmg.disectLableS.destroy()
+                    self.tbmg.disectLableS = None
+                if self.tbmg.disecttextS and self.tbmg.disecttextscrollS:
+                    pass
+                else:
+                    addnointercptGUI()
         else:
-            if self.tbmg.disectlist or self.tbmg.disectLable:
-                self.tbmg.disectlist.destroy()
-                self.tbmg.disectlist = None
-                self.tbmg.disectLable.destroy()
-                self.tbmg.disectLable = None
-            if self.tbmg.disecttext and self.tbmg.disecttextscroll:
-                pass
+            def addnointercptGUI():
+                self.tbmg.disecttextR = Text(self.tbmg.page5, height=30, width=55)
+                self.tbmg.disecttextscrollR = Scrollbar(self.tbmg.page5)
+                self.tbmg.disecttextscrollR.config(command=self.tbmg.disecttextR.yview)
+                self.tbmg.disecttextR.config(yscrollcommand=self.tbmg.disecttextscrollR.set)
+                self.tbmg.disecttextR.grid(row=5, column=2)
+                self.tbmg.disecttextscrollR.grid(row=5, column=3)
+                self.tbmg.disecttextR.insert(END, 'DISECT\n---\n')
+    
+            def addintercptGUI():
+                self.tbmg.disectlistR = VerticalScrolledFrame(self.tbmg.page5, height=30, width=50)
+                self.tbmg.disectlistR.grid(row=5, column=2)
+                self.tbmg.disectLableR = Label(self.tbmg.disectlistR.interior, text='DISECT VIEW\n----\n')
+                self.tbmg.disectLableR.grid(row=0, column=0)
+    
+            if self.intercepting:
+                if self.tbmg.disecttextR or self.tbmg.disecttextscrollR:
+                    self.tbmg.disecttextR.destroy()
+                    self.tbmg.disecttextR = None
+                    self.tbmg.disecttextscrollR.destroy()
+                    self.tbmg.disecttextscrollR = None
+                if self.tbmg.disectlistR and self.tbmg.disectLableR:
+                    pass
+                else:
+                    addintercptGUI()
             else:
-                addnointercptGUI()
+                if self.tbmg.disectlistR or self.tbmg.disectLableR:
+                    self.tbmg.disectlistR.destroy()
+                    self.tbmg.disectlistR = None
+                    self.tbmg.disectLableR.destroy()
+                    self.tbmg.disectLableR = None
+                if self.tbmg.disecttextR and self.tbmg.disecttextscrollR:
+                    pass
+                else:
+                    addnointercptGUI()
         print 'intercpet is now', self.intercepting
         if not self.intercepting:
             self.parent_conn.send('accept')
-            # time.sleep(.5)
-            # while self.child_conn.poll():
-            #    self.child_conn.recv()
             self.clearRaw()
             try:
                 self.clearDisect()
@@ -257,13 +361,15 @@ class ScapyBridge(object):
         self.status = not self.status
         if self.status:
             try:
-                print("Adding iptable rules :")
-                print(self.iptablesr)
+                print("Adding iptable rules :",self.iptablesr)
                 os.system(self.iptablesr)
                 self.intercepter = interceptor.Interceptor()
                 try:
                     print 'about to start proxy'
-                    self.intercepter.start(self.callback, queue_ids=range(20))
+                    if self.is_outgoing:
+                        self.intercepter.start(self.callback, queue_ids=range(20))
+                    else:
+                        self.intercepter.start(self.callback, queue_ids=range(20, 40))
                     print ('moving after proxy start')
                 except Exception, e:
                     print 'COUNDT START PROXY',e
@@ -331,8 +437,12 @@ class ScapyBridge(object):
         # list packet arival
         if self.intercepting:
             id = time.time()  # self.getID()
-            button = Button(self.tbmg.netqueueframe.interior,text=str(num) + ":" + packet.summary(),
+            if self.is_outgoing:
+                button = Button(self.tbmg.netqueueframeS.interior,text=str(num) + ":" + packet.summary(),
                             width="80", command=lambda: skipAhead(num))
+            else:
+                button = Button(self.tbmg.netqueueframeR.interior, text=str(num) + ":" + packet.summary(),
+                                width="80", command=lambda: skipAhead(num))
             button.pack()
             self.packet_queue.append([1, packet, id, button])
         
@@ -373,7 +483,10 @@ class ScapyBridge(object):
             self.clearDisect()
             self.clearRaw()
             self._packet_disect_intercept(self.current_pack)
-            self.tbmg.rawtext.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+            if self.is_outgoing:
+                self.tbmg.rawtextS.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+            else:
+                self.tbmg.rawtextR.insert('0.0', str(raw(self.current_pack)).encode('hex'))
             
             #recive data from GUI
             
@@ -433,8 +546,12 @@ class ScapyBridge(object):
                 button.destroy()
             except:
                 pass
-            self.tbmg.disecttext.insert('3.0', self._packet_disect_nointercept(self.current_pack))
-            self.tbmg.rawtext.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
+            if self.is_outgoing:
+                self.tbmg.disecttextS.insert('3.0', self._packet_disect_nointercept(self.current_pack))
+                self.tbmg.rawtextS.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
+            else:
+                self.tbmg.disecttextR.insert('3.0', self._packet_disect_nointercept(self.current_pack))
+                self.tbmg.rawtextR.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
             if self.pcapfile:
                 wrpcap(self.pcapfile, self.current_pack, append=True)
                 wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)

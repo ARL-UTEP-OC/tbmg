@@ -106,17 +106,20 @@ class Application(Frame):
         self.line2.grid(row =7, columnspan = 20, sticky='ew', pady = 5)
         ###########################################################
         
-        self.scapybridge = ScapyBridge(self)
+        self.scapybridgeS = ScapyBridge(self, True)
+        self.scapybridgeR = ScapyBridge(self, False)
         
-        self.startproxy = Button(page5, text='Proxy Toggle', command = self.scapybridge.proxyToggle)
+        def toggleProxyBoth():
+	        self.scapybridgeR.proxyToggle()
+	        self.scapybridgeS.proxyToggle()
+        self.startproxy = Button(page5, text='Proxy Toggle', command = toggleProxyBoth)
         self.startproxy.grid(row=0, column=0)
         
-        self.intercept = Button(page5, text='Intercept On', command = self.scapybridge.interceptToggle)
+        def toggleInterceptBoth():
+	        self.scapybridgeR.interceptToggle()
+	        self.scapybridgeS.interceptToggle()
+        self.intercept = Button(page5, text='Intercept On', command = toggleInterceptBoth)
         self.intercept.grid(row=0, column=1)
-
-        self.queue = Button(page5, text='Network queue')
-        self.queue.grid(row=0, column=2)
-        
         
         def file_save():
             #https://stackoverflow.com/questions/19476232/save-file-dialog-in-tkinter
@@ -128,83 +131,81 @@ class Application(Frame):
             f.close()
         self.savepcap = Button(page5, text='Save to PCAP', command=file_save)
         self.savepcap.grid(row=0, column=3)
-        
-        self.rawview = Button(page5, text='Send Raw', command=self.scapybridge.sendRawUpdate)
-        self.rawview.grid(row=2, column=0)
-        self.disectview = Button(page5, text='Send Dissected', command=self.scapybridge.sendDisectUpdate)
-        self.disectview.grid(row=2, column=1)
-        self.drop = Button(page5, text='Drop', command=self.scapybridge.sendDrop)
-        self.drop.grid(row=2, column=3)
-        
+
         def setFilter(args=None):
-            self.scapybridge.filter = self.proxyfilter.get()
-            print 'using filter:', self.scapybridge.filter
+	        self.scapybridgeS.filter = self.proxyfilter.get()
+	        self.scapybridgeR.filter = self.scapybridgeS
+	        print 'using filter:', self.scapybridgeS.filter
+
         self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
         self.defaultproxyfiltertext.grid(row=1, column=0)
         self.proxyfilter = Entry(page5)
         self.proxyfilter.bind("<Return>", setFilter)
         self.proxyfilter.grid(row=1, column=1)
         
-        self.rawtext = Text(page5, height=50, width=55)
-        self.rawtextscroll = Scrollbar(page5)
-        self.rawtextscroll.config(command=self.rawtext.yview)
-        self.rawtext.config(yscrollcommand=self.rawtextscroll.set)
-        self.rawtext.grid(row=3, column=0)
-        self.rawtextscroll.grid(row=3, column=1)
-        self.rawtext.insert(END,'RAWVIEW\n---\n')
+        #FOR SENDING/outgoing
+        self.rawviewS = Button(page5, text='Send Raw Outgoing', command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewS.grid(row=2, column=0)
+        self.disectviewS = Button(page5, text='Send Dissected Outgoing', command=self.scapybridgeS.sendDisectUpdate)
+        self.disectviewS.grid(row=2, column=1)
+        self.dropS = Button(page5, text='Drop', command=self.scapybridgeS.sendDrop)
+        self.dropS.grid(row=2, column=3)
         
-        #for not intercepting
-        self.disecttext = Text(page5, height=50, width=55)
-        self.disecttextscroll = Scrollbar(page5)
-        self.disecttextscroll.config(command=self.disecttext.yview)
-        self.disecttext.config(yscrollcommand=self.disecttextscroll.set)
-        self.disecttext.grid(row=3, column=2)
-        self.disecttextscroll.grid(row=3, column=3)
-        self.disecttext.insert(END, 'DISECT\n---\n')
-        self.disectlist = None
-        self.disectLable = None
-        '''
-        #for intercepting
-        self.disectlist = VerticalScrolledFrame(page5,height=100,width=50)
-        self.disectlist.grid(row=3, column=2)
-        self.disectLable = Label(self.disectlist.interior, text='DISECT VIEW\n----\n')
-        self.disectLable.grid(row=0,column=0)
-        '''
-        self.netqueueframe = VerticalScrolledFrame(page5, height=100, width=50)
-        self.netqueueframe.grid(row=3, column=4)
-        self.netqueueLable = Label(self.netqueueframe.interior, text='NET QUEUE\n----\n')
-        self.netqueueLable.pack()
+        self.rawtextS = Text(page5, height=30, width=55)
+        self.rawtextscrollS = Scrollbar(page5)
+        self.rawtextscrollS.config(command=self.rawtextS.yview)
+        self.rawtextS.config(yscrollcommand=self.rawtextscrollS.set)
+        self.rawtextS.grid(row=3, column=0)
+        self.rawtextscrollS.grid(row=3, column=1)
+        self.rawtextS.insert(END,'RAWVIEW\n---\n')
         
-        '''
-        #FOR RECIVING
-        self.rawtextR = Text(page5, height=50, width=55)
+        #for not intercepting - default
+        self.disecttextS = Text(page5, height=30, width=55)
+        self.disecttextscrollS = Scrollbar(page5)
+        self.disecttextscrollS.config(command=self.disecttextS.yview)
+        self.disecttextS.config(yscrollcommand=self.disecttextscrollS.set)
+        self.disecttextS.grid(row=3, column=2)
+        self.disecttextscrollS.grid(row=3, column=3)
+        self.disecttextS.insert(END, 'DISECT\n---\n')
+        self.disectlistS = None
+
+        self.netqueueframeS = VerticalScrolledFrame(page5, height=100, width=50)
+        self.netqueueframeS.grid(row=3, column=4)
+        self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
+        self.netqueueLableS.pack()
+        
+        
+        #FOR RECIVING/incoming
+        self.rawviewR = Button(page5, text='Send Raw Incoming', command=self.scapybridgeR.sendRawUpdate)
+        self.rawviewR.grid(row=4, column=0)
+        self.disectviewR = Button(page5, text='Send Dissected Incoming', command=self.scapybridgeR.sendDisectUpdate)
+        self.disectviewR.grid(row=4, column=1)
+        self.dropR = Button(page5, text='Drop', command=self.scapybridgeR.sendDrop)
+        self.dropR.grid(row=4, column=3)
+        
+        self.rawtextR = Text(page5, height=30, width=55)
         self.rawtextscrollR = Scrollbar(page5)
         self.rawtextscrollR.config(command=self.rawtextR.yview)
         self.rawtextR.config(yscrollcommand=self.rawtextscrollR.set)
-        self.rawtextR.grid(row=4, column=0)
-        self.rawtextscrollR.grid(row=4, column=1)
+        self.rawtextR.grid(row=5, column=0)
+        self.rawtextscrollR.grid(row=5, column=1)
         self.rawtextR.insert(END, 'RAWVIEW\n---\n')
 
-        # for not intercepting
-        self.disecttextR = Text(page5, height=50, width=55)
+        self.disecttextR = Text(page5, height=30, width=55)
         self.disecttextscrollR = Scrollbar(page5)
         self.disecttextscrollR.config(command=self.disecttextR.yview)
         self.disecttextR.config(yscrollcommand=self.disecttextscrollR.set)
-        self.disecttextR.grid(row=4, column=2)
-        self.disecttextscrollR.grid(row=4, column=3)
+        self.disecttextR.grid(row=5, column=2)
+        self.disecttextscrollR.grid(row=5, column=3)
         self.disecttextR.insert(END, 'DISECT\n---\n')
         self.disectlistR = None
         self.disectLableR = None
-        #for intercepting
-        #self.disectlist = VerticalScrolledFrame(page5,height=100,width=50)
-        #self.disectlist.grid(row=3, column=2)
-        #self.disectLable = Label(self.disectlist.interior, text='DISECT VIEW\n----\n')
-        #self.disectLable.grid(row=0,column=0)
+        
         self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=50)
-        self.netqueueframeR.grid(row=4, column=4)
+        self.netqueueframeR.grid(row=5, column=4)
         self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
         self.netqueueLableR.pack()
-        '''
+        
         
         self.page5 = page5
         
