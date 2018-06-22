@@ -17,6 +17,7 @@ from StringIO import StringIO
 import sys
 import tkFileDialog
 
+
 class ScapyBridge(object):
     
     def __init__(self, tbmg_, is_outgoing_=False):
@@ -47,6 +48,7 @@ class ScapyBridge(object):
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
         
+    #only run in one scapy_bridge
     def loadPCAP(self):
         def popUP(i):
             print 'CLICKED PACKET:',str(i)
@@ -80,7 +82,6 @@ class ScapyBridge(object):
             i = i+1
         f.close()
         
-    
     def sendDrop(self):
         if self.intercepting:
             self.parent_conn.send('drop')
@@ -313,7 +314,7 @@ class ScapyBridge(object):
         self.intercepting = not self.intercepting
         if self.is_outgoing:
             def addnointercptGUI():
-                self.tbmg.disecttextS = Text(self.tbmg.page5, height=30, width=55)
+                self.tbmg.disecttextS = Text(self.tbmg.page5, height=30, width=60)
                 self.tbmg.disecttextscrollS = Scrollbar(self.tbmg.page5)
                 self.tbmg.disecttextscrollS.config(command=self.tbmg.disecttextS.yview)
                 self.tbmg.disecttextS.config(yscrollcommand=self.tbmg.disecttextscrollS.set)
@@ -333,9 +334,7 @@ class ScapyBridge(object):
                     self.tbmg.disecttextS = None
                     self.tbmg.disecttextscrollS.destroy()
                     self.tbmg.disecttextscrollS = None
-                if self.tbmg.disectlistS and self.tbmg.disectLableS:
-                    pass
-                else:
+                if not (self.tbmg.disectlistS and self.tbmg.disectLableS):
                     addintercptGUI()
             else:
                 if self.tbmg.disectlistS or self.tbmg.disectLableS:
@@ -343,13 +342,11 @@ class ScapyBridge(object):
                     self.tbmg.disectlistS = None
                     self.tbmg.disectLableS.destroy()
                     self.tbmg.disectLableS = None
-                if self.tbmg.disecttextS and self.tbmg.disecttextscrollS:
-                    pass
-                else:
+                if not(self.tbmg.disecttextS and self.tbmg.disecttextscrollS):
                     addnointercptGUI()
         else:
             def addnointercptGUI():
-                self.tbmg.disecttextR = Text(self.tbmg.page5, height=30, width=55)
+                self.tbmg.disecttextR = Text(self.tbmg.page5, height=30, width=60)
                 self.tbmg.disecttextscrollR = Scrollbar(self.tbmg.page5)
                 self.tbmg.disecttextscrollR.config(command=self.tbmg.disecttextR.yview)
                 self.tbmg.disecttextR.config(yscrollcommand=self.tbmg.disecttextscrollR.set)
@@ -369,9 +366,7 @@ class ScapyBridge(object):
                     self.tbmg.disecttextR = None
                     self.tbmg.disecttextscrollR.destroy()
                     self.tbmg.disecttextscrollR = None
-                if self.tbmg.disectlistR and self.tbmg.disectLableR:
-                    pass
-                else:
+                if not (self.tbmg.disectlistR and self.tbmg.disectLableR):
                     addintercptGUI()
             else:
                 if self.tbmg.disectlistR or self.tbmg.disectLableR:
@@ -379,9 +374,7 @@ class ScapyBridge(object):
                     self.tbmg.disectlistR = None
                     self.tbmg.disectLableR.destroy()
                     self.tbmg.disectLableR = None
-                if self.tbmg.disecttextR and self.tbmg.disecttextscrollR:
-                    pass
-                else:
+                if not (self.tbmg.disecttextR and self.tbmg.disecttextscrollR):
                     addnointercptGUI()
         print 'intercpet is now', self.intercepting
         if not self.intercepting:

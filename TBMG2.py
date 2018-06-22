@@ -110,16 +110,14 @@ class Application(Frame):
         self.scapybridgeR = ScapyBridge(self, False)
         
         def toggleProxyBoth():
-	        self.scapybridgeR.proxyToggle()
-	        self.scapybridgeS.proxyToggle()
-        self.startproxy = Button(page5, text='Proxy Toggle', command = toggleProxyBoth)
-        self.startproxy.grid(row=0, column=0)
+            self.scapybridgeR.proxyToggle()
+            self.scapybridgeS.proxyToggle()
+        
         
         def toggleInterceptBoth():
-	        self.scapybridgeR.interceptToggle()
-	        self.scapybridgeS.interceptToggle()
-        self.intercept = Button(page5, text='Intercept On', command = toggleInterceptBoth)
-        self.intercept.grid(row=0, column=1)
+            self.scapybridgeR.interceptToggle()
+            self.scapybridgeS.interceptToggle()
+            extraInterceptedGUI(self.scapybridgeS.intercepting)
         
         def file_save():
             #https://stackoverflow.com/questions/19476232/save-file-dialog-in-tkinter
@@ -129,13 +127,60 @@ class Application(Frame):
             self.scapybridge.pcapfile = f.name
             print 'using',f.name
             f.close()
+        
+        def setFilter(args=None):
+            self.scapybridgeS.filter = self.proxyfilter.get()
+            self.scapybridgeR.filter = self.scapybridgeS
+            print 'using filter:', self.scapybridgeS.filter
+            
+        def extraInterceptedGUI(is_intercepting):
+            if is_intercepting:
+                # intercpetd queue
+                self.netqueueframeS = VerticalScrolledFrame(page5, height=100, width=40)
+                self.netqueueframeS.grid(row=3, column=4)
+                self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
+                self.netqueueLableS.pack()
+                
+                self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=40)
+                self.netqueueframeR.grid(row=5, column=4)
+                self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
+                self.netqueueLableR.pack()
+                
+                # packet history
+                self.loadPacksFromPcap = Button(page5, text='Load from PCAP', command=self.scapybridgeS.loadPCAP)
+                self.loadPacksFromPcap.grid(row=2, column=5)
+                self.pack_view = VerticalScrolledFrame(page5, height=200, width=50)
+                self.pack_view.grid(row=3, column=5, rowspan=2, columnspan=3)
+                self.replaceIncoming = Button(page5, text='Replace Incoming')
+                self.replaceIncoming.grid(row=5, column=5)
+                self.replaceOutgoing = Button(page5, text='Replace Outgoing')
+                self.replaceOutgoing.grid(row=5, column=6)
+                
+                self.rawtextS.configure(width=30)
+                self.rawtextR.configure(width=30)
+            else:
+                try:
+                    self.netqueueframeS.destroy()
+                    self.netqueueLableS.destroy()
+                    self.netqueueframeR.destroy()
+                    self.netqueueLableR.destroy()
+                    self.loadPacksFromPcap.destroy()
+                    self.pack_view.destroy()
+                    self.replaceIncoming.destroy()
+                    self.replaceOutgoing.destroy()
+                except:
+                    pass
+                self.rawtextS.configure(width=60)
+                self.rawtextR.configure(width=60)
+
+        self.startproxy = Button(page5, text='Proxy Toggle', command=toggleProxyBoth)
+        self.startproxy.grid(row=0, column=0)
+        
+        self.intercept = Button(page5, text='Intercept On', command=toggleInterceptBoth)
+        self.intercept.grid(row=0, column=1)
+        
         self.savepcap = Button(page5, text='Save Traffic\nto PCAP', command=file_save)
         self.savepcap.grid(row=0, column=3)
-
-        def setFilter(args=None):
-	        self.scapybridgeS.filter = self.proxyfilter.get()
-	        self.scapybridgeR.filter = self.scapybridgeS
-	        print 'using filter:', self.scapybridgeS.filter
 
         self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
         self.defaultproxyfiltertext.grid(row=1, column=0)
@@ -151,7 +196,7 @@ class Application(Frame):
         self.dropS = Button(page5, text='Drop Outgoing', command=self.scapybridgeS.sendDrop)
         self.dropS.grid(row=2, column=3)
         
-        self.rawtextS = Text(page5, height=30, width=30)
+        self.rawtextS = Text(page5, height=30, width=60)
         self.rawtextscrollS = Scrollbar(page5)
         self.rawtextscrollS.config(command=self.rawtextS.yview)
         self.rawtextS.config(yscrollcommand=self.rawtextscrollS.set)
@@ -159,8 +204,7 @@ class Application(Frame):
         self.rawtextscrollS.grid(row=3, column=1)
         self.rawtextS.insert(END,'RAWVIEW\n---\n')
         
-        #for not intercepting - default
-        self.disecttextS = Text(page5, height=30, width=30)
+        self.disecttextS = Text(page5, height=30, width=60)
         self.disecttextscrollS = Scrollbar(page5)
         self.disecttextscrollS.config(command=self.disecttextS.yview)
         self.disecttextS.config(yscrollcommand=self.disecttextscrollS.set)
@@ -168,12 +212,6 @@ class Application(Frame):
         self.disecttextscrollS.grid(row=3, column=3)
         self.disecttextS.insert(END, 'DISECT\n---\n')
         self.disectlistS = None
-
-        self.netqueueframeS = VerticalScrolledFrame(page5, height=100, width=40)
-        self.netqueueframeS.grid(row=3, column=4)
-        self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
-        self.netqueueLableS.pack()
-        
         
         #FOR RECIVING/incoming
         self.rawviewR = Button(page5, text='Send Raw Incoming', command=self.scapybridgeR.sendRawUpdate)
@@ -183,7 +221,7 @@ class Application(Frame):
         self.dropR = Button(page5, text='Drop Incoming', command=self.scapybridgeR.sendDrop)
         self.dropR.grid(row=4, column=3)
         
-        self.rawtextR = Text(page5, height=30, width=30)
+        self.rawtextR = Text(page5, height=30, width=60)
         self.rawtextscrollR = Scrollbar(page5)
         self.rawtextscrollR.config(command=self.rawtextR.yview)
         self.rawtextR.config(yscrollcommand=self.rawtextscrollR.set)
@@ -191,7 +229,7 @@ class Application(Frame):
         self.rawtextscrollR.grid(row=5, column=1)
         self.rawtextR.insert(END, 'RAWVIEW\n---\n')
 
-        self.disecttextR = Text(page5, height=30, width=30)
+        self.disecttextR = Text(page5, height=30, width=60)
         self.disecttextscrollR = Scrollbar(page5)
         self.disecttextscrollR.config(command=self.disecttextR.yview)
         self.disecttextR.config(yscrollcommand=self.disecttextscrollR.set)
@@ -200,21 +238,6 @@ class Application(Frame):
         self.disecttextR.insert(END, 'DISECT\n---\n')
         self.disectlistR = None
         self.disectLableR = None
-        
-        self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=40)
-        self.netqueueframeR.grid(row=5, column=4)
-        self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
-        self.netqueueLableR.pack()
-        
-        #packet history
-        self.loadPacksFromPcap = Button(page5,text='Load from PCAP',command=self.scapybridgeS.loadPCAP)
-        self.loadPacksFromPcap.grid(row=2,column=5)
-        self.pack_view = VerticalScrolledFrame(page5, height=200, width=50)
-        self.pack_view.grid(row=3,column=5,rowspan=2,columnspan=3)
-        self.replaceIncoming = Button(page5, text='Replace Incoming')
-        self.replaceIncoming.grid(row=5, column=5)
-        self.replaceOutgoing = Button(page5, text='Replace Outgoing')
-        self.replaceOutgoing.grid(row=5, column=6)
         
         self.page5 = page5
         
