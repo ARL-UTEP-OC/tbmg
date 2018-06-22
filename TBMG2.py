@@ -129,7 +129,7 @@ class Application(Frame):
             self.scapybridge.pcapfile = f.name
             print 'using',f.name
             f.close()
-        self.savepcap = Button(page5, text='Save to PCAP', command=file_save)
+        self.savepcap = Button(page5, text='Save Traffic\nto PCAP', command=file_save)
         self.savepcap.grid(row=0, column=3)
 
         def setFilter(args=None):
@@ -146,12 +146,12 @@ class Application(Frame):
         #FOR SENDING/outgoing
         self.rawviewS = Button(page5, text='Send Raw Outgoing', command=self.scapybridgeS.sendRawUpdate)
         self.rawviewS.grid(row=2, column=0)
-        self.disectviewS = Button(page5, text='Send Dissected Outgoing', command=self.scapybridgeS.sendDisectUpdate)
+        self.disectviewS = Button(page5, text='Send Dissected\nOutgoing', command=self.scapybridgeS.sendDisectUpdate)
         self.disectviewS.grid(row=2, column=1)
-        self.dropS = Button(page5, text='Drop', command=self.scapybridgeS.sendDrop)
+        self.dropS = Button(page5, text='Drop Outgoing', command=self.scapybridgeS.sendDrop)
         self.dropS.grid(row=2, column=3)
         
-        self.rawtextS = Text(page5, height=30, width=55)
+        self.rawtextS = Text(page5, height=30, width=30)
         self.rawtextscrollS = Scrollbar(page5)
         self.rawtextscrollS.config(command=self.rawtextS.yview)
         self.rawtextS.config(yscrollcommand=self.rawtextscrollS.set)
@@ -160,7 +160,7 @@ class Application(Frame):
         self.rawtextS.insert(END,'RAWVIEW\n---\n')
         
         #for not intercepting - default
-        self.disecttextS = Text(page5, height=30, width=55)
+        self.disecttextS = Text(page5, height=30, width=30)
         self.disecttextscrollS = Scrollbar(page5)
         self.disecttextscrollS.config(command=self.disecttextS.yview)
         self.disecttextS.config(yscrollcommand=self.disecttextscrollS.set)
@@ -169,7 +169,7 @@ class Application(Frame):
         self.disecttextS.insert(END, 'DISECT\n---\n')
         self.disectlistS = None
 
-        self.netqueueframeS = VerticalScrolledFrame(page5, height=100, width=50)
+        self.netqueueframeS = VerticalScrolledFrame(page5, height=100, width=40)
         self.netqueueframeS.grid(row=3, column=4)
         self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
         self.netqueueLableS.pack()
@@ -178,12 +178,12 @@ class Application(Frame):
         #FOR RECIVING/incoming
         self.rawviewR = Button(page5, text='Send Raw Incoming', command=self.scapybridgeR.sendRawUpdate)
         self.rawviewR.grid(row=4, column=0)
-        self.disectviewR = Button(page5, text='Send Dissected Incoming', command=self.scapybridgeR.sendDisectUpdate)
+        self.disectviewR = Button(page5, text='Send Dissected\nIncoming', command=self.scapybridgeR.sendDisectUpdate)
         self.disectviewR.grid(row=4, column=1)
-        self.dropR = Button(page5, text='Drop', command=self.scapybridgeR.sendDrop)
+        self.dropR = Button(page5, text='Drop Incoming', command=self.scapybridgeR.sendDrop)
         self.dropR.grid(row=4, column=3)
         
-        self.rawtextR = Text(page5, height=30, width=55)
+        self.rawtextR = Text(page5, height=30, width=30)
         self.rawtextscrollR = Scrollbar(page5)
         self.rawtextscrollR.config(command=self.rawtextR.yview)
         self.rawtextR.config(yscrollcommand=self.rawtextscrollR.set)
@@ -191,7 +191,7 @@ class Application(Frame):
         self.rawtextscrollR.grid(row=5, column=1)
         self.rawtextR.insert(END, 'RAWVIEW\n---\n')
 
-        self.disecttextR = Text(page5, height=30, width=55)
+        self.disecttextR = Text(page5, height=30, width=30)
         self.disecttextscrollR = Scrollbar(page5)
         self.disecttextscrollR.config(command=self.disecttextR.yview)
         self.disecttextR.config(yscrollcommand=self.disecttextscrollR.set)
@@ -201,11 +201,20 @@ class Application(Frame):
         self.disectlistR = None
         self.disectLableR = None
         
-        self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=50)
+        self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=40)
         self.netqueueframeR.grid(row=5, column=4)
         self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
         self.netqueueLableR.pack()
         
+        #packet history
+        self.loadPacksFromPcap = Button(page5,text='Load from PCAP',command=self.scapybridgeS.loadPCAP)
+        self.loadPacksFromPcap.grid(row=2,column=5)
+        self.pack_view = VerticalScrolledFrame(page5, height=200, width=50)
+        self.pack_view.grid(row=3,column=5,rowspan=2,columnspan=3)
+        self.replaceIncoming = Button(page5, text='Replace Incoming')
+        self.replaceIncoming.grid(row=5, column=5)
+        self.replaceOutgoing = Button(page5, text='Replace Outgoing')
+        self.replaceOutgoing.grid(row=5, column=6)
         
         self.page5 = page5
         

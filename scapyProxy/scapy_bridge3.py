@@ -15,6 +15,7 @@ import chardet
 import interceptor
 from StringIO import StringIO
 import sys
+import tkFileDialog
 
 class ScapyBridge(object):
     
@@ -44,7 +45,42 @@ class ScapyBridge(object):
         self.display_lock = Lock()
         self.pack_num_counter=1
         self.skip_to_pack_num=0#use me to skip ahead
+        self.pack_view_packs =[]
         
+    def loadPCAP(self):
+        def popUP(i):
+            print 'CLICKED PACKET:',str(i)
+            pkt = self.pack_view_packs[i]
+            popup = Toplevel()
+            popup.title = pkt.summary()
+            pack_text = self._packet_disect_nointercept(pkt)
+            msg = Text(popup)
+            scroller = Scrollbar(popup)
+            scroller.config(command=msg.yview)
+            msg.config(yscrollcommand=scroller.set)
+            msg.pack()
+            scroller.pack()
+            msg.insert(END, pack_text)
+            self.tbmg.replaceIncoming.configure(command=lambda pack=pkt: self.tbmg.scapybridgeR._packet_disect_intercept(pack))
+            self.tbmg.replaceOutgoing.configure(command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack))
+        self.pack_view_packs = []
+        for button in self.tbmg.pack_view.interior.grid_slaves():
+            button.destroy()
+        i = 0
+        f = tkFileDialog.asksaveasfile(mode='r', defaultextension=".pcap")
+        name = f.name
+        f.close()
+        packets = rdpcap(name)
+        for p in packets:
+            print (i, p.summary())
+            b = Button(self.tbmg.pack_view.interior, text=p.summary(), width="60", command=lambda j=i: popUP(j))
+            #TODO add popup w/ packet details
+            b.grid(row=i, column=0)
+            self.pack_view_packs.append(p)
+            i = i+1
+        f.close()
+        
+    
     def sendDrop(self):
         if self.intercepting:
             self.parent_conn.send('drop')
@@ -427,7 +463,6 @@ class ScapyBridge(object):
         if self.filter:
             try:
                 dofilter = bool(sniff(offline=packet['IP'], filter=self.filter))
-                #print 'filter:',dofilter
                 if not dofilter:
                     return data, interceptor.NF_ACCEPT
             except Exception, e:
@@ -439,7 +474,7 @@ class ScapyBridge(object):
             id = time.time()  # self.getID()
             if self.is_outgoing:
                 button = Button(self.tbmg.netqueueframeS.interior,text=str(num) + ":" + packet.summary(),
-                            width="80", command=lambda: skipAhead(num))
+                                width="80", command=lambda: skipAhead(num))
             else:
                 button = Button(self.tbmg.netqueueframeR.interior, text=str(num) + ":" + packet.summary(),
                                 width="80", command=lambda: skipAhead(num))
@@ -498,8 +533,11 @@ class ScapyBridge(object):
                 #TODO efficently delte self from packet queue
                 return data, interceptor.NF_DROP
             elif recv == 'accept':
-                print "ACCEPTING"
-                self.clearDisect()
+                print "ACCEPTING",str(num)
+                try:
+                    self.clearDisect()
+                except:
+                    pass
                 self.clearRaw()
                 self.display_lock.release()
                 button.destroy()
