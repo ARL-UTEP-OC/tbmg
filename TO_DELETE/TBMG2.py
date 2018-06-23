@@ -1,4 +1,3 @@
-#!/usr/bin/python2
 from Tkinter import *
 from ScrolledText import ScrolledText
 from tkFileDialog import askopenfilename
