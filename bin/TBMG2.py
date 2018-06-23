@@ -23,6 +23,7 @@ from scapyProxy.scapy_bridge3 import *
 import tkFileDialog
 import threading
 from scapyProxy.GuiUtils import VerticalScrolledFrame
+import netifaces
 
 class Application(Frame):
     def __init__(self, master):
@@ -109,8 +110,13 @@ class Application(Frame):
         ###########################################################
 
         self.page5 = page5
+        self.macs = []
+        for i in netifaces.interfaces():
+	        self.macs.append(netifaces.ifaddresses(i)[netifaces.AF_LINK][0]['addr'])
+        print 'MY MACS:', self.macs
         self.scapybridgeS = ScapyBridge(self, True)
         self.scapybridgeR = ScapyBridge(self, False)
+        
         
         def toggleProxyBoth():
             self.scapybridgeR.proxyToggle()
