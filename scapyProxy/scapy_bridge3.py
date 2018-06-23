@@ -49,6 +49,10 @@ class ScapyBridge(object):
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
         self.ether_pass = []
+        self.arp_stop = False
+        self.arp_sniff_thread = Thread(target=self.arpSniff)
+        self.arp_sniff_thread.setDaemon(True)
+        
         
     #only run in one scapy_bridge instance
     def loadPCAP(self):
@@ -90,6 +94,17 @@ class ScapyBridge(object):
             i = i+1
         f.close()
         
+    def arpHelper(self,pkt):
+        t = Thread(target=self.callback, args=(raw(pkt),None,None,None))
+        t.setDaemon(True)
+        t.start()
+        #return None#'started callback on packet:',pkt.summary()
+    
+    def arpSniff(self):
+        #TODO seperate in/out arps
+        a = sniff(prn=self.arpHelper, filter='arp',stop_filter=lambda x:self.arp_stop==True)
+        print('stopped apr sniff')
+    
     def sendDrop(self):
         if self.intercepting:
             self.parent_conn.send('drop')
@@ -399,6 +414,8 @@ class ScapyBridge(object):
                 self.intercepter = interceptor.Interceptor()
                 try:
                     print 'about to start proxy'
+                    self.arp_stop = False
+                    self.arp_sniff_thread.start()
                     if self.is_outgoing:
                         self.intercepter.start(self.callback, queue_ids=range(20))
                     else:
@@ -416,6 +433,7 @@ class ScapyBridge(object):
         else:
             try:
                 #TODO change to accept the exact amount of packs
+                self.arp_stop = True
                 print 'mass accept packs'
                 #clean gui/packs
                 if self.intercepting:
@@ -454,9 +472,14 @@ class ScapyBridge(object):
             return data, interceptor.NF_DROP
         num = self.pack_num_counter
         self.pack_num_counter +=1 # may need to make this thread safe
-        packet = Ether(ll_data)/IP(data)
-        org = Ether(ll_data)/IP(data)
-        if packet in self.ether_pass:
+        if data:
+            packet = Ether(ll_data) / IP(data)
+            org = Ether(ll_data) / IP(data)
+        else:
+            packet = Ether(ll_data)
+            org =Ether(ll_data)
+        
+        if packet in self.ether_pass:#arp should not catch here...
             print 'FOUND SENT ETH CHANGE PACKET - ACCEPTING'
             packet.show()
             self.ether_pass.remove(packet)
@@ -464,12 +487,20 @@ class ScapyBridge(object):
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
-                dofilter = bool(sniff(offline=packet['IP'], filter=self.filter))
+                dofilter = bool(sniff(offline=packet, filter=self.filter))
                 if not dofilter:
-                    return data, interceptor.NF_ACCEPT
+                    if data:
+                        return data, interceptor.NF_ACCEPT
+                    elif self.intercepting:
+                        #sendp(packet)
+                        return
             except Exception, e:
                 print 'Filter err:', self.filter, e
-                return data, interceptor.NF_ACCEPT
+                if data:
+                    return data, interceptor.NF_ACCEPT
+                elif self.intercepting:
+                    #sendp(packet)
+                    return
         print("Got a packet " + str(num))  # +":", packet.summary())
         # list packet arival
         if self.intercepting:
@@ -489,19 +520,26 @@ class ScapyBridge(object):
         print 'got lock for ',str(num)
         if not self.status:
             print 'I should not be on...'
-            self.display_lock.release()
             try:
                 button.destroy()
             except:
                 pass
             self.display_lock.release()
-            return data, interceptor.NF_ACCEPT
+            if data:
+                return data, interceptor.NF_ACCEPT
+            elif self.intercepting:
+                #sendp(packet)
+                return
         #if self.skip_to_pack_num:
         if num < self.skip_to_pack_num:
             print 'skipping! im at',str(num)
             button.destroy()
             self.display_lock.release()
-            return data, interceptor.NF_ACCEPT
+            if data:
+                return data, interceptor.NF_ACCEPT
+            else:
+                #sendp(packet)
+                return
         elif num == self.skip_to_pack_num:
             print 'hit num.im at',str(num)
             self.skip_to_pack_num=0
@@ -515,7 +553,11 @@ class ScapyBridge(object):
                     wrpcap(self.pcapfile, org, append=True)
                     wrpcap(self.pcapfile[:-5] + '_mod.pcap', org, append=True)
                 self.display_lock.release()
-                return data, interceptor.NF_ACCEPT
+                if data:
+                    return data, interceptor.NF_ACCEPT
+                elif self.intercepting:
+                    #sendp(packet)
+                    return
             
             #display packet
             self.clearDisect()
@@ -534,7 +576,8 @@ class ScapyBridge(object):
                 self.display_lock.release()
                 button.destroy()
                 #TODO efficently delte self from packet queue
-                return data, interceptor.NF_DROP
+                if data:
+                    return data, interceptor.NF_DROP
             elif recv == 'accept':
                 print "ACCEPTING",str(num)
                 try:
@@ -544,11 +587,18 @@ class ScapyBridge(object):
                 self.clearRaw()
                 self.display_lock.release()
                 button.destroy()
-                return data, interceptor.NF_ACCEPT
+                if data:
+                    return data, interceptor.NF_ACCEPT
+                elif self.intercepting:
+                    #sendp(packet)
+                    return
             elif recv == 'raw':
                 recv = str(self.child_conn.recv())
                 #TODO make more definite way...
-                self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
+                if data:
+                    self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
+                else:
+                    self.current_pack = Ether(recv)#TODO check if arp gets this
             elif recv == 'disect':#already been modded
                 pass
             
@@ -561,13 +611,7 @@ class ScapyBridge(object):
                 del (self.current_pack['TCP'].chksum)
             except:
                 pass
-            '''
-            try:
-                del (self.current_pack['ICMP'].chksum)
-            except:
-                pass
-            self.current_pack = self.current_pack.__class__(str(self.current_pack))
-            '''
+            #TODO check chksum.....
             self.clearDisect()
             self.clearRaw()
             #handle updated packet
@@ -578,14 +622,22 @@ class ScapyBridge(object):
             print 'rather than........',data
             #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
             if org['Ether'] != self.current_pack['Ether']:
-                self.ether_pass.append(self.current_pack)
-                sendp(self.current_pack)
-                self.display_lock.release()
-                return raw(self.current_pack), interceptor.NF_DROP
-            self.display_lock.release()
+                if data:
+                    self.ether_pass.append(self.current_pack)
+                    sendp(self.current_pack)
+                    self.display_lock.release()
+                    return raw(self.current_pack), interceptor.NF_DROP
+                elif self.intercepting:
+                    sendp(self.current_pack)
+                    return
             button.destroy()
+            self.display_lock.release()
             # TODO efficently delte self from packet queue
-            return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
+            if data:
+                return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
+            elif self.intercepting:
+                sendp(self.current_pack)
+                return
         else:
             print 'not intercpeting..'
             try:
@@ -602,4 +654,7 @@ class ScapyBridge(object):
                 wrpcap(self.pcapfile, self.current_pack, append=True)
                 wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
             self.display_lock.release()
-            return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
+            if data:
+                return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
+            else:
+                return
