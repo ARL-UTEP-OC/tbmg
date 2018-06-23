@@ -48,6 +48,7 @@ class ScapyBridge(object):
         self.pack_num_counter=1
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
+        self.ether_pass = []
         
     #only run in one scapy_bridge instance
     def loadPCAP(self):
@@ -106,13 +107,14 @@ class ScapyBridge(object):
     def sendDisectUpdate(self):
         if not self.intercepting:
             return
-        #print 'current:', str(raw(self.current_pack)).encode('hex')
+        #skip if no GUI
         if self.is_outgoing:
             if not self.gui_layers or len(self.tbmg.disectlistS.interior.grid_slaves()) < 2:
                 return
         else:
             if not self.gui_layers or len(self.tbmg.disectlistR.interior.grid_slaves()) < 2:
                 return
+        #update packet based on GUI
         for layer in self.gui_layers:
             if layer and layer in self.current_pack:
                 for pair in self.gui_layers[layer]:
@@ -180,7 +182,7 @@ class ScapyBridge(object):
                         print 'setattr err:',e,'->',"self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
         r = raw(self.current_pack)
         print('producing from disect:', r.encode('hex'))
-        if self.status and self.intercepting: #assuming there is a packet being intercepted
+        if self.status and self.intercepting:
             self.parent_conn.send(r)
         else:
             print 'going to send...'
@@ -452,8 +454,13 @@ class ScapyBridge(object):
             return data, interceptor.NF_DROP
         num = self.pack_num_counter
         self.pack_num_counter +=1 # may need to make this thread safe
-        packet = Ether(ll_data)/IP(data)#eth/IP(data)
+        packet = Ether(ll_data)/IP(data)
         org = Ether(ll_data)/IP(data)
+        if packet in self.ether_pass:
+            print 'FOUND SENT ETH CHANGE PACKET - ACCEPTING'
+            packet.show()
+            self.ether_pass.remove(packet)
+            return data, interceptor.NF_ACCEPT
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
@@ -487,6 +494,7 @@ class ScapyBridge(object):
                 button.destroy()
             except:
                 pass
+            self.display_lock.release()
             return data, interceptor.NF_ACCEPT
         #if self.skip_to_pack_num:
         if num < self.skip_to_pack_num:
@@ -569,6 +577,11 @@ class ScapyBridge(object):
             print 'sending updated....',raw(self.current_pack)
             print 'rather than........',data
             #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
+            if org['Ether'] != self.current_pack['Ether']:
+                self.ether_pass.append(self.current_pack)
+                sendp(self.current_pack)
+                self.display_lock.release()
+                return raw(self.current_pack), interceptor.NF_DROP
             self.display_lock.release()
             button.destroy()
             # TODO efficently delte self from packet queue
