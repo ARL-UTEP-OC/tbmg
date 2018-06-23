@@ -1,5 +1,6 @@
 #!/usr/bin/python2
 from Tkinter import *
+from ScrolledText import ScrolledText
 from tkFileDialog import askopenfilename
 import tkMessageBox
 from jinja2 import Template
@@ -105,14 +106,14 @@ class Application(Frame):
         self.line2 = ttk.Separator(page4, orient= HORIZONTAL)
         self.line2.grid(row =7, columnspan = 20, sticky='ew', pady = 5)
         ###########################################################
-        
+
+        self.page5 = page5
         self.scapybridgeS = ScapyBridge(self, True)
         self.scapybridgeR = ScapyBridge(self, False)
         
         def toggleProxyBoth():
             self.scapybridgeR.proxyToggle()
             self.scapybridgeS.proxyToggle()
-        
         
         def toggleInterceptBoth():
             self.scapybridgeR.interceptToggle()
@@ -137,24 +138,21 @@ class Application(Frame):
             if is_intercepting:
                 # intercpetd queue
                 self.netqueueframeS = VerticalScrolledFrame(page5, height=100, width=40)
-                self.netqueueframeS.grid(row=3, column=4)
+                self.netqueueframeS.grid(row=3, column=3)
                 self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableS.pack()
                 
                 self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=40)
-                self.netqueueframeR.grid(row=5, column=4)
+                self.netqueueframeR.grid(row=5, column=3)
                 self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableR.pack()
                 
                 # packet history
                 self.loadPacksFromPcap = Button(page5, text='Load from PCAP', command=self.scapybridgeS.loadPCAP)
                 self.loadPacksFromPcap.grid(row=2, column=5)
-                self.pack_view = VerticalScrolledFrame(page5, height=200, width=50)
-                self.pack_view.grid(row=3, column=5, rowspan=2, columnspan=3)
-                self.replaceIncoming = Button(page5, text='Replace Incoming')
-                self.replaceIncoming.grid(row=5, column=5)
-                self.replaceOutgoing = Button(page5, text='Replace Outgoing')
-                self.replaceOutgoing.grid(row=5, column=6)
+                self.pack_view = VerticalScrolledFrame(page5, height=300, width=60)
+                self.pack_view.canvas.config(height=700)
+                self.pack_view.grid(row=3, column=5, rowspan=3)
                 
                 self.rawtextS.configure(width=30)
                 self.rawtextR.configure(width=30)
@@ -166,8 +164,6 @@ class Application(Frame):
                     self.netqueueLableR.destroy()
                     self.loadPacksFromPcap.destroy()
                     self.pack_view.destroy()
-                    self.replaceIncoming.destroy()
-                    self.replaceOutgoing.destroy()
                 except:
                     pass
                 self.rawtextS.configure(width=60)
@@ -196,22 +192,15 @@ class Application(Frame):
         self.dropS = Button(page5, text='Drop Outgoing', command=self.scapybridgeS.sendDrop)
         self.dropS.grid(row=2, column=3)
         
-        self.rawtextS = Text(page5, height=30, width=60)
-        self.rawtextscrollS = Scrollbar(page5)
-        self.rawtextscrollS.config(command=self.rawtextS.yview)
-        self.rawtextS.config(yscrollcommand=self.rawtextscrollS.set)
+        self.rawtextS = ScrolledText(page5, height=30, width=60)
         self.rawtextS.grid(row=3, column=0)
-        self.rawtextscrollS.grid(row=3, column=1)
         self.rawtextS.insert(END,'RAWVIEW\n---\n')
         
-        self.disecttextS = Text(page5, height=30, width=60)
-        self.disecttextscrollS = Scrollbar(page5)
-        self.disecttextscrollS.config(command=self.disecttextS.yview)
-        self.disecttextS.config(yscrollcommand=self.disecttextscrollS.set)
-        self.disecttextS.grid(row=3, column=2)
-        self.disecttextscrollS.grid(row=3, column=3)
+        self.disecttextS = ScrolledText(page5, height=30, width=60)#no intercept
+        self.disecttextS.grid(row=3, column=1)
         self.disecttextS.insert(END, 'DISECT\n---\n')
         self.disectlistS = None
+        self.disectLableS = None
         
         #FOR RECIVING/incoming
         self.rawviewR = Button(page5, text='Send Raw Incoming', command=self.scapybridgeR.sendRawUpdate)
@@ -221,28 +210,16 @@ class Application(Frame):
         self.dropR = Button(page5, text='Drop Incoming', command=self.scapybridgeR.sendDrop)
         self.dropR.grid(row=4, column=3)
         
-        self.rawtextR = Text(page5, height=30, width=60)
-        self.rawtextscrollR = Scrollbar(page5)
-        self.rawtextscrollR.config(command=self.rawtextR.yview)
-        self.rawtextR.config(yscrollcommand=self.rawtextscrollR.set)
+        self.rawtextR = ScrolledText(page5, height=30, width=60)
         self.rawtextR.grid(row=5, column=0)
-        self.rawtextscrollR.grid(row=5, column=1)
         self.rawtextR.insert(END, 'RAWVIEW\n---\n')
 
-        self.disecttextR = Text(page5, height=30, width=60)
-        self.disecttextscrollR = Scrollbar(page5)
-        self.disecttextscrollR.config(command=self.disecttextR.yview)
-        self.disecttextR.config(yscrollcommand=self.disecttextscrollR.set)
-        self.disecttextR.grid(row=5, column=2)
-        self.disecttextscrollR.grid(row=5, column=3)
+        self.disecttextR = ScrolledText(page5, height=30, width=60)
+        self.disecttextR.grid(row=5, column=1)
         self.disecttextR.insert(END, 'DISECT\n---\n')
         self.disectlistR = None
         self.disectLableR = None
         
-        self.page5 = page5
-        
-
-
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
 		if self.transport != None:
 			self.ports.grid_remove()

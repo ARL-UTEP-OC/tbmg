@@ -14,7 +14,7 @@ class VerticalScrolledFrame(Frame):
         # create a canvas object and a vertical scrollbar for scrolling it
         self.vscrollbar = Scrollbar(self, orient=VERTICAL)
         self.vscrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
-        self.canvas = Canvas(self, bd=0, highlightthickness=0, height=400,
+        self.canvas = Canvas(self, bd=0, highlightthickness=0, height=400,width=700,
                         yscrollcommand=self.vscrollbar.set)
         self.canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
         self.vscrollbar.config(command=self.canvas.yview)

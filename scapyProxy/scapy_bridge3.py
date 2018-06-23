@@ -16,6 +16,7 @@ import interceptor
 from StringIO import StringIO
 import sys
 import tkFileDialog
+from ScrolledText import ScrolledText
 
 
 class ScapyBridge(object):
@@ -48,7 +49,7 @@ class ScapyBridge(object):
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
         
-    #only run in one scapy_bridge
+    #only run in one scapy_bridge instance
     def loadPCAP(self):
         def popUP(i):
             print 'CLICKED PACKET:',str(i)
@@ -56,15 +57,21 @@ class ScapyBridge(object):
             popup = Toplevel()
             popup.title = pkt.summary()
             pack_text = self._packet_disect_nointercept(pkt)
-            msg = Text(popup)
-            scroller = Scrollbar(popup)
-            scroller.config(command=msg.yview)
-            msg.config(yscrollcommand=scroller.set)
-            msg.pack()
-            scroller.pack()
+            replaceIncoming = Button(popup, text='Replace Incoming',command=lambda pack=pkt: self.tbmg.scapybridgeR._packet_disect_intercept(pack,True))
+            replaceIncoming.grid(row=6, column=5)
+            replaceOutgoing = Button(popup, text='Replace Outgoing',command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack,True))
+            replaceOutgoing.grid(row=6, column=6)
+            msg = ScrolledText(popup)
+            #scroller = Scrollbar(popup)
+            #scroller.config(command=msg.yview)
+            #msg.config(yscrollcommand=scroller.set)
+            msg.grid(row=0,column=0,columnspan=2)
+            replaceOutgoing.grid(row=1,column=0)
+            replaceIncoming.grid(row=1,column=1)
+            #scroller.pack()
             msg.insert(END, pack_text)
-            self.tbmg.replaceIncoming.configure(command=lambda pack=pkt: self.tbmg.scapybridgeR._packet_disect_intercept(pack))
-            self.tbmg.replaceOutgoing.configure(command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack))
+            #self.tbmg.replaceIncoming.configure(command=lambda pack=pkt: self.tbmg.scapybridgeR._packet_disect_intercept(pack))
+            #self.tbmg.replaceOutgoing.configure(command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack))
         self.pack_view_packs = []
         for button in self.tbmg.pack_view.interior.grid_slaves():
             button.destroy()
@@ -75,7 +82,7 @@ class ScapyBridge(object):
         packets = rdpcap(name)
         for p in packets:
             print (i, p.summary())
-            b = Button(self.tbmg.pack_view.interior, text=p.summary(), width="60", command=lambda j=i: popUP(j))
+            b = Button(self.tbmg.pack_view.interior, text=p.summary(), width=50, command=lambda j=i: popUP(j))
             #TODO add popup w/ packet details
             b.grid(row=i, column=0)
             self.pack_view_packs.append(p)
@@ -173,7 +180,12 @@ class ScapyBridge(object):
                         print 'setattr err:',e,'->',"self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
         r = raw(self.current_pack)
         print('producing from disect:', r.encode('hex'))
-        self.parent_conn.send(r)
+        if self.status and self.intercepting: #assuming there is a packet being intercepted
+            self.parent_conn.send(r)
+        else:
+            print 'going to send...'
+            sendp(self.current_pack)
+            print 'send packet'
         self.gui_layers = None
         self.clearDisect()
         self.clearRaw()
@@ -190,10 +202,12 @@ class ScapyBridge(object):
         if self.is_outgoing:
             self.tbmg.rawtextS.delete(1.0, END)
         else:
-            self.tbmg.rawtextS.delete(1.0, END)
+            self.tbmg.rawtextR.delete(1.0, END)
     
-    def _packet_disect_intercept(self, pack):
+    def _packet_disect_intercept(self, pack, overwrite_current_pack=False):
         self.clearDisect()
+        if overwrite_current_pack:
+            self.current_pack = pack
         self.gui_layers = {}
         rownum = 1
         #$pack.show()
@@ -314,26 +328,20 @@ class ScapyBridge(object):
         self.intercepting = not self.intercepting
         if self.is_outgoing:
             def addnointercptGUI():
-                self.tbmg.disecttextS = Text(self.tbmg.page5, height=30, width=60)
-                self.tbmg.disecttextscrollS = Scrollbar(self.tbmg.page5)
-                self.tbmg.disecttextscrollS.config(command=self.tbmg.disecttextS.yview)
-                self.tbmg.disecttextS.config(yscrollcommand=self.tbmg.disecttextscrollS.set)
-                self.tbmg.disecttextS.grid(row=3, column=2)
-                self.tbmg.disecttextscrollS.grid(row=3, column=3)
+                self.tbmg.disecttextS = ScrolledText(self.tbmg.page5, height=30, width=60)
+                self.tbmg.disecttextS.grid(row=3, column=1)
                 self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
             
             def addintercptGUI():
                 self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.page5, height=30, width=50)
-                self.tbmg.disectlistS.grid(row=3, column=2)
+                self.tbmg.disectlistS.grid(row=3, column=1)
                 self.tbmg.disectLableS = Label(self.tbmg.disectlistS.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableS.grid(row=0, column=0)
             
             if self.intercepting:
-                if self.tbmg.disecttextS or self.tbmg.disecttextscrollS:
+                if self.tbmg.disecttextS:
                     self.tbmg.disecttextS.destroy()
                     self.tbmg.disecttextS = None
-                    self.tbmg.disecttextscrollS.destroy()
-                    self.tbmg.disecttextscrollS = None
                 if not (self.tbmg.disectlistS and self.tbmg.disectLableS):
                     addintercptGUI()
             else:
@@ -342,30 +350,24 @@ class ScapyBridge(object):
                     self.tbmg.disectlistS = None
                     self.tbmg.disectLableS.destroy()
                     self.tbmg.disectLableS = None
-                if not(self.tbmg.disecttextS and self.tbmg.disecttextscrollS):
+                if not self.tbmg.disecttextS:
                     addnointercptGUI()
         else:
             def addnointercptGUI():
-                self.tbmg.disecttextR = Text(self.tbmg.page5, height=30, width=60)
-                self.tbmg.disecttextscrollR = Scrollbar(self.tbmg.page5)
-                self.tbmg.disecttextscrollR.config(command=self.tbmg.disecttextR.yview)
-                self.tbmg.disecttextR.config(yscrollcommand=self.tbmg.disecttextscrollR.set)
-                self.tbmg.disecttextR.grid(row=5, column=2)
-                self.tbmg.disecttextscrollR.grid(row=5, column=3)
+                self.tbmg.disecttextR = ScrolledText(self.tbmg.page5, height=30, width=60)
+                self.tbmg.disecttextR.grid(row=5, column=1)
                 self.tbmg.disecttextR.insert(END, 'DISECT\n---\n')
     
             def addintercptGUI():
                 self.tbmg.disectlistR = VerticalScrolledFrame(self.tbmg.page5, height=30, width=50)
-                self.tbmg.disectlistR.grid(row=5, column=2)
+                self.tbmg.disectlistR.grid(row=5, column=1)
                 self.tbmg.disectLableR = Label(self.tbmg.disectlistR.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableR.grid(row=0, column=0)
     
             if self.intercepting:
-                if self.tbmg.disecttextR or self.tbmg.disecttextscrollR:
+                if self.tbmg.disecttextR:
                     self.tbmg.disecttextR.destroy()
                     self.tbmg.disecttextR = None
-                    self.tbmg.disecttextscrollR.destroy()
-                    self.tbmg.disecttextscrollR = None
                 if not (self.tbmg.disectlistR and self.tbmg.disectLableR):
                     addintercptGUI()
             else:
@@ -374,7 +376,7 @@ class ScapyBridge(object):
                     self.tbmg.disectlistR = None
                     self.tbmg.disectLableR.destroy()
                     self.tbmg.disectLableR = None
-                if not (self.tbmg.disecttextR and self.tbmg.disecttextscrollR):
+                if not self.tbmg.disecttextR:
                     addnointercptGUI()
         print 'intercpet is now', self.intercepting
         if not self.intercepting:
