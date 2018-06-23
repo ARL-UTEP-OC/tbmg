@@ -95,13 +95,13 @@ class ScapyBridge(object):
         f.close()
         
     def arpHelper(self,pkt):
-        im_the_src = bool(str(pkt['ARP'].hwsrc) in self.tbmg.macs)
-        if self.is_outgoing:
-            if im_the_src:
+        im_the_dst = bool(str(pkt['ARP'].hwdst) in self.tbmg.macs)
+        if not self.is_outgoing:
+            if im_the_dst:
                 t = Thread(target=self.callback, args=(raw(pkt),None,None,None))
                 t.setDaemon(True)
                 t.start()
-        elif not im_the_src:
+        elif not im_the_dst:
             t = Thread(target=self.callback, args=(raw(pkt), None, None, None))
             t.setDaemon(True)
             t.start()
