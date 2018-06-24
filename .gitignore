@@ -18,3 +18,7 @@ ns-allinone-3.26
 \.idea/vcs\.xml
 
 \.idea/workspace\.xml
+
+afl_output/
+
+afl_testcases/

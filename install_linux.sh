@@ -9,6 +9,14 @@ fi
 apt-get install libnetfilter-queue-dev
 apt-get install python-tk
 modprode ip_tables
+#for AFL
+#git clone https://github.com/mirrorer/afl
+#cd ./afl
+#make
+#make install
+#cd ..
+#rm -r afl #?
+
 
 pip install virtualenv
 virtualenv $VENV_NAME
@@ -17,6 +25,8 @@ source ./$VENV_NAME/bin/activate
 pip install jinja2
 pip install scapy
 pip install chardet
+#for AFL
+#pip2 install python-afl
 
 echo "#!/usr/bin/env bash" > start_tbmg.sh
 echo "#The name of the container used during installation" >> start_tbmg.sh
