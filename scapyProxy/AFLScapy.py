@@ -1,12 +1,13 @@
 from __future__ import print_function
-import afl
 from scapy.all import *
 import json
 from collections import defaultdict
 import os
 import threading
 import time
-from StringIO import StringIO
+from scapyProxy.GuiUtils import VerticalScrolledFrame
+from Tkinter import *
+from multiprocessing import Process
 
 class FuzzPacket:
     def __init__(self,packet_,tbmg_=None,packet_feilds_=[]):
@@ -18,6 +19,7 @@ class FuzzPacket:
         self.input_name = self.input_dir + '/afl_input'
         self.wrapper_name = 'packet_fuzz_wrapper.py'
         self.cmd = 'py-afl-fuzz -m 500 -t 20000+ -i ' + self.input_dir + ' -o ' + self.output_dir + ' -- python ' + self.wrapper_name
+        self.accept_me = []
         
     def startScapyFuzz(self):
         layers = []
@@ -47,21 +49,26 @@ class FuzzPacket:
                 del (to_send['TCP'].chksum)
             except:
                 pass
-            print('sending:')
-            to_send.show2()
-            response = sr1(to_send, timeout=3, verbose=0)
-            if response:
-                print('got:')
-                response.show()
-            else:
-                print('no response')
-                
+            print('sending:',to_send.summary())
+            self.accept_me.append(to_send)
+            
+            time.sleep(1)
+            #to_send.show2()
+            response = sendp(to_send)#sr1(to_send, timeout=3, verbose=0)
+            #if response:
+            #    print('got:')
+            #    response.show()
+            #else:
+            #    print('no response')
+    '''
     def startAFLFuzz(self):
+        import afl
+        afl.start()
         if not os.path.exists(self.input_dir):
             os.makedirs(self.input_dir)
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
-    
+        
         if not self.packet_feilds:
             afl_input = open(self.input_name + 'packetHex.txt', 'w')
             afl_input.write(raw(self.packet).encode('hex'))
@@ -81,7 +88,100 @@ class FuzzPacket:
         
         print ('running:', self.cmd)
         #os.system(self.cmd)#might have to pipe this into a terminal proc
+    '''
+    
+    def GUIstartFuzz(self):
+        self.packet_feilds=[]
+        for layer in self.gui_layers:
+            if layer == 'Ether' or layer == 'Ethernet':
+                continue
+            for item in self.gui_layers[layer]:
+                try:
+                    if item[3]['text'] == "T":
+                        self.packet_feilds.append((item[0]['text'], item[1]['text']))
+                except:
+                    print ('item:',item)
+                    pass
+        print ('packet_feilds:', self.packet_feilds)
+        p = Process(target=self.startScapyFuzz)
+        p.daemon = True
+        p.run()
+        #self.startScapyFuzz()
         
+
+    def populateFuzzerGUI(self):
+        self.tbmg.start_fuzz = Button(self.tbmg.page6, text='Start Fuzz', command=self.GUIstartFuzz)
+        self.tbmg.start_fuzz.grid(row=0, column=0)
+        self.tbmg.stop_fuzz = Button(self.tbmg.page6, text='Stop Fuzz')
+        self.tbmg.stop_fuzz.grid(row=0, column=1)
+        self.tbmg.packet_scroll = VerticalScrolledFrame(self.tbmg.page6, height=30, width=50)
+        self.tbmg.packet_scroll.grid(row=1, column=0)
+        self.populatePacket()
+
+    def populatePacket(self):
+        def updateToggleButton(button):
+            if button['text'] == 'F':
+                button.configure(text='T')
+            else:
+                button.configure(text='F')
+        self.gui_layers = {}
+        rownum = 1
+        # $pack.show()
+        for i in range(10):
+            try:
+                l = self.packet.getlayer(i)
+                if not l:
+                    continue
+                self.gui_layers[l.name] = []
+            
+                layer = Label(self.tbmg.packet_scroll.interior, text=l.name)
+                layer.grid(row=rownum, column=0)
+                rownum += 1
+                if l.name == 'Ethernet' or l.name == 'Ether':
+                    label = Label(self.tbmg.packet_scroll.interior, text='src')
+                    label.grid(row=rownum, column=1)
+                    entry = Entry(self.tbmg.packet_scroll.interior, width=30)
+                    entry.grid(row=rownum, column=2)
+                    entry.insert(0, str(self.packet[0].src).encode('utf8'))
+                    self.gui_layers[l.name].append((layer, label, entry))
+                    rownum += 1
+                
+                    label = Label(self.tbmg.packet_scroll.interior, text='dst')
+                    label.grid(row=rownum, column=1)
+                    entry = Entry(self.tbmg.packet_scroll.interior, width=30)
+                    entry.grid(row=rownum, column=2)
+                    entry.insert(0, str(self.packet[0].dst).encode('utf8'))
+                    self.gui_layers[l.name].append((layer, label, entry))
+                    rownum += 1
+                
+                    label = Label(self.tbmg.packet_scroll.interior, text='type')
+                    label.grid(row=rownum, column=1)
+                    entry = Entry(self.tbmg.packet_scroll.interior, width=30)
+                    entry.grid(row=rownum, column=2)
+                    entry.insert(0, str(self.packet[0].type).encode('utf8'))
+                    self.gui_layers[l.name].append((layer, label, entry))
+                    rownum += 1
+                    continue
+            
+                for f in l.fields:
+                    label = Label(self.tbmg.packet_scroll.interior, text=str(f))
+                    label.grid(row=rownum, column=1)
+                    entry = Entry(self.tbmg.packet_scroll.interior, width=30)
+                    entry.grid(row=rownum, column=2)
+                    toggle = Button(self.tbmg.packet_scroll.interior, text='F')
+                    toggle.configure(command=lambda button=toggle : updateToggleButton(button))
+                    toggle.grid(row=rownum, column=3)
+                    try:
+                        entry.insert(0, str(l.fields[f]).encode('utf8'))
+                    except:
+                        # print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
+                        entry.insert(0, str(l.fields[f]).encode('hex'))
+                    self.gui_layers[l.name].append((layer, label, entry, toggle))
+                    rownum += 1
+            except Exception, e:
+                print('print disect yes intercpet error', e)
+                break
+
 
 if __name__ == '__main__':
     print ('running me')

@@ -463,6 +463,7 @@ class ScapyBridge(object):
 
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
+        # Here is where the magic happens.
         def skipAhead(dst_num):
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
@@ -472,7 +473,7 @@ class ScapyBridge(object):
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
             self.skip_to_pack_num = dst_num
             self.parent_conn.send('accept')
-        # Here is where the magic happens.
+        
         if not self.status:
             print 'I should not be on...'
             return data, interceptor.NF_DROP
@@ -485,11 +486,22 @@ class ScapyBridge(object):
             packet = Ether(ll_data)
             org =Ether(ll_data)
         
+        #skip what I send
         if packet in self.ether_pass:#arp should not catch here...
             print 'FOUND SENT ETH CHANGE PACKET - ACCEPTING'
             packet.show()
             self.ether_pass.remove(packet)
             return data, interceptor.NF_ACCEPT
+        if self.is_outgoing:
+            try:
+                if packet in self.tbmg.fuzz_packet.accept_me:
+                    print 'FOUND OUTGOING FUZZ'
+                    self.tbmg.fuzz_packet.accept_me.remove(packet)
+                    return data,interceptor.NF_ACCEPT#TODO handle arp change
+            except:
+                pass
+        
+        #check filter
         dofilter = False  # show package in gui when = True
         if self.filter:
             try:
@@ -507,8 +519,9 @@ class ScapyBridge(object):
                 elif self.intercepting:
                     #sendp(packet)
                     return
-        print("Got a packet " + str(num))  # +":", packet.summary())
+        
         # list packet arival
+        print("Got a packet " + str(num))  # +":", packet.summary())
         if self.intercepting:
             id = time.time()  # self.getID()
             if self.is_outgoing:

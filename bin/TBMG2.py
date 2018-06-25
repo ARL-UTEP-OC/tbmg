@@ -24,6 +24,7 @@ import tkFileDialog
 import threading
 from scapyProxy.GuiUtils import VerticalScrolledFrame
 import netifaces
+from scapyProxy.AFLScapy import FuzzPacket
 
 class Application(Frame):
     def __init__(self, master):
@@ -176,6 +177,12 @@ class Application(Frame):
                 self.rawtextS.configure(width=60)
                 self.rawtextR.configure(width=60)
 
+        def sendFuzzer():
+            print 'going to fuzz:'
+            self.scapybridgeS.current_pack.show()
+            self.fuzz_packet = FuzzPacket(self.scapybridgeS.current_pack, tbmg_=self)
+            self.fuzz_packet.populateFuzzerGUI()
+        
         self.startproxy = Button(page5, text='Proxy Toggle', command=toggleProxyBoth)
         self.startproxy.grid(row=0, column=0)
         
@@ -184,6 +191,9 @@ class Application(Frame):
         
         self.savepcap = Button(page5, text='Save Traffic\nto PCAP', command=file_save)
         self.savepcap.grid(row=0, column=3)
+        
+        self.sendoutfuzz = Button(page5,text='Send to Fuzzer',command=sendFuzzer)
+        self.sendoutfuzz.grid(row=0, column=4)
 
         self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
         self.defaultproxyfiltertext.grid(row=1, column=0)
@@ -229,8 +239,6 @@ class Application(Frame):
         #############################################################
         #############################################################
         self.page6 = page6
-        
-	    
         
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
 		if self.transport != None:
