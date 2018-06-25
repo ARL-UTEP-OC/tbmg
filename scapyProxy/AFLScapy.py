@@ -20,6 +20,7 @@ class FuzzPacket:
         self.wrapper_name = 'packet_fuzz_wrapper.py'
         self.cmd = 'py-afl-fuzz -m 500 -t 20000+ -i ' + self.input_dir + ' -o ' + self.output_dir + ' -- python ' + self.wrapper_name
         self.accept_me = []
+        self.status = False
         
     def startScapyFuzz(self):
         layers = []
@@ -28,7 +29,7 @@ class FuzzPacket:
                 layers.append(self.packet[layer_num].__class__)
             except IndexError:
                 continue
-        while 1:
+        while self.status:
             to_send = self.packet.copy()
             fuzzed_packet = None
             for layer in layers:
@@ -51,10 +52,8 @@ class FuzzPacket:
                 pass
             print('sending:',to_send.summary())
             self.accept_me.append(to_send)
-            
-            time.sleep(1)
-            #to_send.show2()
             response = sendp(to_send)#sr1(to_send, timeout=3, verbose=0)
+            time.sleep(.1)
             #if response:
             #    print('got:')
             #    response.show()
@@ -89,8 +88,13 @@ class FuzzPacket:
         print ('running:', self.cmd)
         #os.system(self.cmd)#might have to pipe this into a terminal proc
     '''
+    def GUIstopFuzz(self):
+        self.status = False
+        for item in self.tbmg.page6.grid_slaves():
+            item.destroy()
     
     def GUIstartFuzz(self):
+        self.status = True
         self.packet_feilds=[]
         for layer in self.gui_layers:
             if layer == 'Ether' or layer == 'Ethernet':
@@ -103,16 +107,16 @@ class FuzzPacket:
                     print ('item:',item)
                     pass
         print ('packet_feilds:', self.packet_feilds)
-        p = Process(target=self.startScapyFuzz)
-        p.daemon = True
-        p.run()
+        p = threading.Thread(target=self.startScapyFuzz)
+        p.setDaemon(True)
+        p.start()
         #self.startScapyFuzz()
         
 
     def populateFuzzerGUI(self):
         self.tbmg.start_fuzz = Button(self.tbmg.page6, text='Start Fuzz', command=self.GUIstartFuzz)
         self.tbmg.start_fuzz.grid(row=0, column=0)
-        self.tbmg.stop_fuzz = Button(self.tbmg.page6, text='Stop Fuzz')
+        self.tbmg.stop_fuzz = Button(self.tbmg.page6, text='Stop Fuzz', command=self.GUIstopFuzz)
         self.tbmg.stop_fuzz.grid(row=0, column=1)
         self.tbmg.packet_scroll = VerticalScrolledFrame(self.tbmg.page6, height=30, width=50)
         self.tbmg.packet_scroll.grid(row=1, column=0)
