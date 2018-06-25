@@ -22,3 +22,7 @@ ns-allinone-3.26
 afl_output/
 
 afl_testcases/
+
+afl_output2/
+
+afl_output3/

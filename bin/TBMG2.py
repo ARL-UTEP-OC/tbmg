@@ -107,7 +107,7 @@ class Application(Frame):
         #############################################################
         self.line2 = ttk.Separator(page4, orient= HORIZONTAL)
         self.line2.grid(row =7, columnspan = 20, sticky='ew', pady = 5)
-        ###########################################################
+        #############################################################
 
         self.page5 = page5
         self.macs = []
@@ -226,6 +226,11 @@ class Application(Frame):
         self.disecttextR.insert(END, 'DISECT\n---\n')
         self.disectlistR = None
         self.disectLableR = None
+        #############################################################
+        #############################################################
+        self.page6 = page6
+        
+	    
         
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
 		if self.transport != None:
@@ -1234,6 +1239,9 @@ nb.add(page4, text='Create Dissector')
 
 page5 = ttk.Frame(nb)
 nb.add(page5, text='Scapy Proxy')
+
+page6 = ttk.Frame(nb)
+nb.add(page6, text="Fuzzer")
 
 app = Application(root)
 root.mainloop()
