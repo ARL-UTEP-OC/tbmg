@@ -17,6 +17,7 @@ from fieldObject import fieldObj
 from StringIO import StringIO
 from collections import OrderedDict
 from scapyCustomizerTBMG import scapyCustomizerTBMG
+import predictor.gui
 
 class Application(Frame):
     def __init__(self, master):
@@ -787,6 +788,11 @@ def modifymodeldata(name, modeltype, connecttype):
 		etcpButton.grid(row=TCProwOffset+6,column=0+buttonsCoffset, sticky=W)
 	nb.select(page3)
 
+	for w in pagePredict.grid_slaves():
+		w.destroy()
+	newpredict = predictor.gui.PredictorGUI(pagePredict,os.path.join("models",name))
+	newpredict.grid(row=1,column=1)
+	nb.tab(pagePredict,state=NORMAL)
 	
 def ifhex(fieldname):
 	if isinstance(fieldname, (int, long)):
@@ -1103,6 +1109,9 @@ nb.add(page3, text='Edit Model')
 
 page3_5 = ttk.Frame(nb)
 nb.add(page3_5, text='Adv. Field', state=DISABLED)
+
+pagePredict = ttk.Frame(nb)
+nb.add(pagePredict, text='Predictor', state=DISABLED)
 
 page4 = ttk.Frame(nb)
 nb.add(page4, text='Create Dissector')
