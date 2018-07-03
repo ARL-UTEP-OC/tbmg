@@ -1,0 +1,19 @@
+----------------------------------------------------------------
+COMMON NETWORK PROTOCOL SCENARIOS WITH C.O.R.E.
+----------------------------------------------------------------
+
+*********Setup********
+1. Untar the scenario tar file (tar -zxvf <scenario>.tar.gz)
+
+2. Move the untarred "scenario" directory to the /root directory (
+	...because the absolute paths for the scripts are used)
+	
+3. The DHCP and the NTP scenarios might require additional steps to run properly:
+	--NTP: install ntpdate (enter command "sudo apt-get install ntpdate")
+	--DHCP: install udhcpd (enter command "sudo apt-get install udhcpd")
+	
+4. The .imn files containing the client/server set-up are located in the ~/imn/both
+	directories for each respective network protocol (e.g. /root/scenario/RTP/imn/both/RTP.imn)
+
+5. Open the .imn file with CORE, run the scenario and the .pcap files (for client and server) will deposit to the .imn file's
+	current local directory.

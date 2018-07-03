@@ -1,0 +1,87 @@
+node n2 {
+    type lanswitch
+    network-config {
+	hostname n2
+	!
+    }
+    canvas c1
+    iconcoords {437.0 176.0}
+    labelcoords {437.0 200.0}
+    interface-peer {e0 n3}
+    interface-peer {e1 n1}
+}
+
+node n3 {
+    type router
+    model PC
+    network-config {
+	hostname n3
+	!
+	interface eth0
+	 ip address 10.0.0.20/24
+	!
+    }
+    canvas c1
+    iconcoords {198.0 279.0}
+    labelcoords {198.0 311.0}
+    interface-peer {eth0 n2}
+    custom-config {
+	custom-config-id service:UserDefined
+	custom-command UserDefined
+	config {
+	files=('TCP_IPclient.sh', )
+	cmdup=('sh TCP_IPclient.sh', )
+	starttime=1
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:TCP_IPclient.sh
+	custom-command TCP_IPclient.sh
+	config {
+	file:///root/scenario/TCP_IP/scripts/individual/TCP_IPclient.sh
+	}
+    }
+    services {DefaultRoute UserDefined}
+}
+
+node n1 {
+    type rj45
+    network-config {
+	hostname eth0
+	!
+    }
+    canvas c1
+    iconcoords {645.0 291.0}
+    labelcoords {645.0 323.0}
+    interface-peer {0 n2}
+}
+
+link l1 {
+    nodes {n3 n2}
+    bandwidth 0
+}
+
+link l2 {
+    nodes {n2 n1}
+}
+
+canvas c1 {
+    name {Canvas1}
+}
+
+option global {
+    interface_names no
+    ip_addresses yes
+    ipv6_addresses yes
+    node_labels yes
+    link_labels yes
+    show_api no
+    background_images no
+    annotations yes
+    grid yes
+    traffic_start 0
+}
+
+option session {
+}
+

@@ -1,0 +1,95 @@
+node n2 {
+    type lanswitch
+    network-config {
+	hostname n2
+	!
+    }
+    canvas c1
+    iconcoords {465.0 157.0}
+    labelcoords {465.0 181.0}
+    interface-peer {e1 n3}
+    interface-peer {e0 n1}
+}
+
+node n3 {
+    type router
+    model host
+    network-config {
+	hostname n3
+	!
+	interface eth0
+	 ip address 10.0.0.10/24
+	!
+    }
+    canvas c1
+    iconcoords {695.0 310.0}
+    labelcoords {695.0 342.0}
+    interface-peer {eth0 n2}
+    custom-config {
+	custom-config-id service:UserDefined
+	custom-command UserDefined
+	config {
+	files=('HTTPserver.sh', )
+	cmdup=('sh HTTPserver.sh', )
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:HTTPserver.sh
+	custom-command HTTPserver.sh
+	config {
+	file:///root/scenario/HTTP/scripts/individual/HTTPserver.sh
+	}
+    }
+    custom-config {
+	custom-config-id service:HTTP
+	custom-command HTTP
+	config {
+	dirs=('/etc/apache2', '/var/run/apache2', '/var/log/apache2', '/var/lock/apache2', '/var/www', '/run/lock', )
+	startidx=50
+	starttime=0
+	}
+    }
+    services {DefaultRoute HTTP UserDefined}
+}
+
+node n1 {
+    type rj45
+    network-config {
+	hostname eth0
+	!
+    }
+    canvas c1
+    iconcoords {168.0 269.0}
+    labelcoords {168.0 301.0}
+    interface-peer {0 n2}
+}
+
+link l2 {
+    nodes {n2 n3}
+    bandwidth 0
+}
+
+link l1 {
+    nodes {n1 n2}
+}
+
+canvas c1 {
+    name {Canvas1}
+}
+
+option global {
+    interface_names no
+    ip_addresses yes
+    ipv6_addresses yes
+    node_labels yes
+    link_labels yes
+    show_api no
+    background_images no
+    annotations yes
+    grid yes
+    traffic_start 0
+}
+
+option session {
+}
+

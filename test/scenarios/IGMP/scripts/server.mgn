@@ -1,0 +1,16 @@
+# Example MGEN script
+
+#################################################
+# These are some "Transmission Event" script lines
+
+TXBUFFER 1000
+# Here is a plain old constant bit rate flow to the loopback interface
+1.0 ON  1 UDP SRC 5001 DST 127.0.0.1/6000 PERIODIC [1 4096]
+
+# These are some "Reception Event" script lines
+1.0 LISTEN UDP 5001,6000,6003
+
+# This JOIN is for UNIX
+1.0 JOIN 224.225.1.3 
+
+5.0 LEAVE 224.225.1.3
