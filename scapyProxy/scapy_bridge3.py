@@ -351,13 +351,15 @@ class ScapyBridge(object):
         self.intercepting = not self.intercepting
         if self.is_outgoing:
             def addnointercptGUI():
-                self.tbmg.disecttextS = ScrolledText(self.tbmg.page5, height=30, width=60)
-                self.tbmg.disecttextS.grid(row=3, column=1)
+                #self.tbmg.disecttextS = ScrolledText(self.tbmg.page5, height=30, width=60)
+                #self.tbmg.disecttextS.grid(row=3, column=1)
+                #self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
+                self.tbmg.disecttextS = ScrolledText(self.tbmg.disect_tab_out, height=30, width=60)
+                self.tbmg.disecttextS.grid(row=0, column=0, columnspan=5)
                 self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
-            
             def addintercptGUI():
-                self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.page5, height=30, width=50)
-                self.tbmg.disectlistS.grid(row=3, column=1)
+                self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.disect_tab_out, height=30, width=50)
+                self.tbmg.disectlistS.grid(row=0, column=0, columnspan=2)
                 self.tbmg.disectLableS = Label(self.tbmg.disectlistS.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableS.grid(row=0, column=0)
             
@@ -377,13 +379,13 @@ class ScapyBridge(object):
                     addnointercptGUI()
         else:
             def addnointercptGUI():
-                self.tbmg.disecttextR = ScrolledText(self.tbmg.page5, height=30, width=60)
-                self.tbmg.disecttextR.grid(row=5, column=1)
+                self.tbmg.disecttextR = ScrolledText(self.tbmg.disect_tab_in, height=30, width=60)
+                self.tbmg.disecttextR.grid(row=0, column=0, columnspan=5)
                 self.tbmg.disecttextR.insert(END, 'DISECT\n---\n')
     
             def addintercptGUI():
-                self.tbmg.disectlistR = VerticalScrolledFrame(self.tbmg.page5, height=30, width=50)
-                self.tbmg.disectlistR.grid(row=5, column=1)
+                self.tbmg.disectlistR = VerticalScrolledFrame(self.tbmg.disect_tab_in, height=30, width=50)
+                self.tbmg.disectlistR.grid(row=0, column=0, columnspan=2)
                 self.tbmg.disectLableR = Label(self.tbmg.disectlistR.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableR.grid(row=0, column=0)
     
@@ -473,207 +475,217 @@ class ScapyBridge(object):
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
             self.skip_to_pack_num = dst_num
             self.parent_conn.send('accept')
-        
-        if not self.status:
-            print 'I should not be on...'
-            return data, interceptor.NF_DROP
-        num = self.pack_num_counter
-        self.pack_num_counter +=1 # may need to make this thread safe
-        if data:
-            packet = Ether(ll_data) / IP(data)
-            org = Ether(ll_data) / IP(data)
-        else:
-            packet = Ether(ll_data)
-            org =Ether(ll_data)
-        
-        #skip what I send
-        if packet in self.ether_pass:#arp should not catch here...
-            print 'FOUND SENT ETH CHANGE PACKET - ACCEPTING'
-            packet.show()
-            self.ether_pass.remove(packet)
-            return data, interceptor.NF_ACCEPT
-        if self.is_outgoing:
-            try:
-                if packet in self.tbmg.fuzz_packet.accept_me:
-                    print 'FOUND OUTGOING FUZZ'
-                    self.tbmg.fuzz_packet.accept_me.remove(packet)
-                    return data,interceptor.NF_ACCEPT#TODO handle arp change
-            except:
-                pass
-        
-        #check filter
-        dofilter = False  # show package in gui when = True
-        if self.filter:
-            try:
-                dofilter = bool(sniff(offline=packet, filter=self.filter))
-                if not dofilter:
+        i_got_lock = False
+        try:
+            if not self.status:
+                print 'I should not be on...'
+                return data, interceptor.NF_DROP
+            num = self.pack_num_counter
+            self.pack_num_counter +=1 # may need to make this thread safe
+            if data:
+                packet = Ether(ll_data) / IP(data)
+                org = Ether(ll_data) / IP(data)
+            else:
+                packet = Ether(ll_data)
+                org =Ether(ll_data)
+            
+            #skip what I send
+            if packet in self.ether_pass:#arp should not catch here...
+                print 'FOUND SENT ETH CHANGE PACKET - ACCEPTING'
+                packet.show()
+                self.ether_pass.remove(packet)
+                return data, interceptor.NF_ACCEPT
+            if self.is_outgoing:
+                try:
+                    if packet in self.tbmg.fuzz_packet.accept_me:
+                        print 'FOUND OUTGOING FUZZ'
+                        self.tbmg.fuzz_packet.accept_me.remove(packet)
+                        return data,interceptor.NF_ACCEPT#TODO handle arp change
+                except:
+                    pass
+            
+            #check filter
+            dofilter = False  # show package in gui when = True
+            if self.filter:
+                try:
+                    dofilter = bool(sniff(offline=packet, filter=self.filter))
+                    if not dofilter:
+                        if data:
+                            return data, interceptor.NF_ACCEPT
+                        elif self.intercepting:
+                            #sendp(packet)
+                            return
+                except Exception, e:
+                    print 'Filter err:', self.filter, e
                     if data:
                         return data, interceptor.NF_ACCEPT
                     elif self.intercepting:
                         #sendp(packet)
                         return
-            except Exception, e:
-                print 'Filter err:', self.filter, e
-                if data:
-                    return data, interceptor.NF_ACCEPT
-                elif self.intercepting:
-                    #sendp(packet)
-                    return
-        
-        # list packet arival
-        print("Got a packet " + str(num))  # +":", packet.summary())
-        if self.intercepting:
-            id = time.time()  # self.getID()
-            if self.is_outgoing:
-                button = Button(self.tbmg.netqueueframeS.interior,text=str(num) + ":" + packet.summary(),
-                                width="80", command=lambda: skipAhead(num))
-            else:
-                button = Button(self.tbmg.netqueueframeR.interior, text=str(num) + ":" + packet.summary(),
-                                width="80", command=lambda: skipAhead(num))
-            button.pack()
-            self.packet_queue.append([1, packet, id, button])
-        
-        # lock - one at a time get to render,
-        print 'want lock'
-        self.display_lock.acquire()
-        print 'got lock for ',str(num)
-        if not self.status:
-            print 'I should not be on...'
-            try:
-                button.destroy()
-            except:
-                pass
-            self.display_lock.release()
-            if data:
-                return data, interceptor.NF_ACCEPT
-            elif self.intercepting:
-                #sendp(packet)
-                return
-        #if self.skip_to_pack_num:
-        if num < self.skip_to_pack_num:
-            print 'skipping! im at',str(num)
-            button.destroy()
-            self.display_lock.release()
-            if data:
-                return data, interceptor.NF_ACCEPT
-            else:
-                #sendp(packet)
-                return
-        elif num == self.skip_to_pack_num:
-            print 'hit num.im at',str(num)
-            self.skip_to_pack_num=0
-        
-        self.current_pack = packet
-        if self.intercepting:
-            print 'intercepting'
-            if self.filter and not dofilter:
-                print 'intercept, but not in filter'
-                if self.pcapfile:
-                    wrpcap(self.pcapfile, org, append=True)
-                    wrpcap(self.pcapfile[:-5] + '_mod.pcap', org, append=True)
-                self.display_lock.release()
-                if data:
-                    return data, interceptor.NF_ACCEPT
-                elif self.intercepting:
-                    #sendp(packet)
-                    return
             
-            #display packet
-            self.clearDisect()
-            self.clearRaw()
-            self._packet_disect_intercept(self.current_pack)
-            if self.is_outgoing:
-                self.tbmg.rawtextS.insert('0.0', str(raw(self.current_pack)).encode('hex'))
-            else:
-                self.tbmg.rawtextR.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+            # list packet arival
+            print("Got a packet " + str(num))  # +":", packet.summary())
+            if self.intercepting:
+                id = time.time()  # self.getID()
+                if self.is_outgoing:
+                    button = Button(self.tbmg.netqueueframeS.interior,text=str(num) + ":" + packet.summary(),
+                                    width="80", command=lambda: skipAhead(num))
+                else:
+                    button = Button(self.tbmg.netqueueframeR.interior, text=str(num) + ":" + packet.summary(),
+                                    width="80", command=lambda: skipAhead(num))
+                button.pack()
+                self.packet_queue.append([1, packet, id, button])
             
-            #recive data from GUI
-            
-            recv = self.child_conn.recv()
-            if recv == 'drop':
-                print 'DROPING'
-                self.display_lock.release()
-                button.destroy()
-                #TODO efficently delte self from packet queue
-                if data:
-                    return data, interceptor.NF_DROP
-            elif recv == 'accept':
-                print "ACCEPTING",str(num)
+            # lock - one at a time get to render,
+            print 'want lock'
+            self.display_lock.acquire()
+            i_got_lock = True
+            print 'got lock for ',str(num)
+            if not self.status:
+                print 'I should not be on...'
                 try:
-                    self.clearDisect()
+                    button.destroy()
                 except:
                     pass
-                self.clearRaw()
                 self.display_lock.release()
-                button.destroy()
                 if data:
                     return data, interceptor.NF_ACCEPT
                 elif self.intercepting:
                     #sendp(packet)
                     return
-            elif recv == 'raw':
-                recv = str(self.child_conn.recv())
-                #TODO make more definite way...
+            #if self.skip_to_pack_num:
+            if num < self.skip_to_pack_num:
+                print 'skipping! im at',str(num)
+                button.destroy()
+                self.display_lock.release()
                 if data:
-                    self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
+                    return data, interceptor.NF_ACCEPT
                 else:
-                    self.current_pack = Ether(recv)#TODO check if arp gets this
-            elif recv == 'disect':#already been modded
-                pass
+                    #sendp(packet)
+                    return
+            elif num == self.skip_to_pack_num:
+                print 'hit num.im at',str(num)
+                self.skip_to_pack_num=0
             
-            # fix chksum and len
-            try:
-                del (self.current_pack['IP'].chksum)
-            except:
-                pass
-            try:
-                del (self.current_pack['TCP'].chksum)
-            except:
-                pass
-            #TODO check chksum.....
-            self.clearDisect()
-            self.clearRaw()
-            #handle updated packet
-            if self.pcapfile:
-                wrpcap(self.pcapfile, org, append=True)
-                wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
-            print 'sending updated....',raw(self.current_pack)
-            print 'rather than........',data
-            #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
-            if org['Ether'] != self.current_pack['Ether']:
-                if data:
-                    self.ether_pass.append(self.current_pack)
-                    sendp(self.current_pack)
+            self.current_pack = packet
+            if self.intercepting:
+                print 'intercepting'
+                if self.filter and not dofilter:
+                    print 'intercept, but not in filter'
+                    if self.pcapfile:
+                        wrpcap(self.pcapfile, org, append=True)
+                        wrpcap(self.pcapfile[:-5] + '_mod.pcap', org, append=True)
                     self.display_lock.release()
-                    return raw(self.current_pack), interceptor.NF_DROP
+                    if data:
+                        return data, interceptor.NF_ACCEPT
+                    elif self.intercepting:
+                        #sendp(packet)
+                        return
+                
+                #display packet
+                self.clearDisect()
+                self.clearRaw()
+                self._packet_disect_intercept(self.current_pack)
+                if self.is_outgoing:
+                    self.tbmg.rawtextS.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+                else:
+                    self.tbmg.rawtextR.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+                
+                #recive data from GUI
+                
+                recv = self.child_conn.recv()
+                if recv == 'drop':
+                    print 'DROPING'
+                    self.display_lock.release()
+                    button.destroy()
+                    #TODO efficently delte self from packet queue
+                    if data:
+                        return data, interceptor.NF_DROP
+                elif recv == 'accept':
+                    print "ACCEPTING",str(num)
+                    try:
+                        self.clearDisect()
+                    except:
+                        pass
+                    self.clearRaw()
+                    self.display_lock.release()
+                    button.destroy()
+                    if data:
+                        return data, interceptor.NF_ACCEPT
+                    elif self.intercepting:
+                        #sendp(packet)
+                        return
+                elif recv == 'raw':
+                    recv = str(self.child_conn.recv())
+                    #TODO make more definite way...
+                    if data:
+                        self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
+                    else:
+                        self.current_pack = Ether(recv)#TODO check if arp gets this
+                elif recv == 'disect':#already been modded
+                    pass
+                
+                # fix chksum and len
+                try:
+                    del (self.current_pack['IP'].chksum)
+                except:
+                    pass
+                try:
+                    del (self.current_pack['TCP'].chksum)
+                except:
+                    pass
+                #TODO check chksum.....
+                self.clearDisect()
+                self.clearRaw()
+                #handle updated packet
+                if self.pcapfile:
+                    wrpcap(self.pcapfile, org, append=True)
+                    wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
+                print 'sending updated....',raw(self.current_pack)
+                print 'rather than........',data
+                #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
+                if org['Ether'] != self.current_pack['Ether']:
+                    if data:
+                        self.ether_pass.append(self.current_pack)
+                        sendp(self.current_pack)
+                        self.display_lock.release()
+                        return raw(self.current_pack), interceptor.NF_DROP
+                    elif self.intercepting:
+                        sendp(self.current_pack)
+                        return
+                button.destroy()
+                self.display_lock.release()
+                # TODO efficently delte self from packet queue
+                if data:
+                    return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
                 elif self.intercepting:
                     sendp(self.current_pack)
                     return
-            button.destroy()
-            self.display_lock.release()
-            # TODO efficently delte self from packet queue
-            if data:
-                return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
-            elif self.intercepting:
-                sendp(self.current_pack)
-                return
-        else:
-            print 'not intercpeting..'
+            else:
+                print 'not intercpeting..'
+                try:
+                    button.destroy()
+                except:
+                    pass
+                if self.is_outgoing:
+                    self.tbmg.disecttextS.insert('3.0', self._packet_disect_nointercept(self.current_pack))
+                    self.tbmg.rawtextS.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
+                else:
+                    self.tbmg.disecttextR.insert('3.0', self._packet_disect_nointercept(self.current_pack))
+                    self.tbmg.rawtextR.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
+                if self.pcapfile:
+                    wrpcap(self.pcapfile, self.current_pack, append=True)
+                    wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
+                self.display_lock.release()
+                if data:
+                    return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
+                else:
+                    return
+        except Exception as e:
+            print 'ERRRRRRRRRR!!!!',e
             try:
-                button.destroy()
+                if i_got_lock:
+                    print 'releasing lock'
+                    self.display_lock.release()
             except:
                 pass
-            if self.is_outgoing:
-                self.tbmg.disecttextS.insert('3.0', self._packet_disect_nointercept(self.current_pack))
-                self.tbmg.rawtextS.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
-            else:
-                self.tbmg.disecttextR.insert('3.0', self._packet_disect_nointercept(self.current_pack))
-                self.tbmg.rawtextR.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
-            if self.pcapfile:
-                wrpcap(self.pcapfile, self.current_pack, append=True)
-                wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
-            self.display_lock.release()
-            if data:
-                return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
-            else:
-                return

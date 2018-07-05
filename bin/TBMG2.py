@@ -113,20 +113,25 @@ class Application(Frame):
         self.page5 = page5
         self.macs = []
         for i in netifaces.interfaces():
-	        self.macs.append(netifaces.ifaddresses(i)[netifaces.AF_LINK][0]['addr'])
+            self.macs.append(netifaces.ifaddresses(i)[netifaces.AF_LINK][0]['addr'])
         print 'MY MACS:', self.macs
         self.scapybridgeS = ScapyBridge(self, True)
         self.scapybridgeR = ScapyBridge(self, False)
         
-        
         def toggleProxyBoth():
             self.scapybridgeR.proxyToggle()
             self.scapybridgeS.proxyToggle()
+            self.startproxy.config(bg=self.red)
+            if self.scapybridgeR.status:
+                self.startproxy.config(bg=self.green)
         
         def toggleInterceptBoth():
             self.scapybridgeR.interceptToggle()
             self.scapybridgeS.interceptToggle()
             extraInterceptedGUI(self.scapybridgeS.intercepting)
+            self.intercept.config(bg=self.red)
+            if self.scapybridgeS.intercepting:
+                self.intercept.config(bg=self.green)
         
         def file_save():
             #https://stackoverflow.com/questions/19476232/save-file-dialog-in-tkinter
@@ -141,29 +146,33 @@ class Application(Frame):
             self.scapybridgeS.filter = self.proxyfilter.get()
             self.scapybridgeR.filter = self.scapybridgeS
             print 'using filter:', self.scapybridgeS.filter
+            self.defaultproxyfiltertext.config(bg=self.grey)
+            if self.scapybridgeS.filter:
+                self.defaultproxyfiltertext.config(bg=self.green)
             
         def extraInterceptedGUI(is_intercepting):
             if is_intercepting:
                 # intercpetd queue
-                self.netqueueframeS = VerticalScrolledFrame(page5, height=100, width=40)
-                self.netqueueframeS.grid(row=3, column=3)
+                self.netqueueframeS = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
+                self.netqueueframeS.grid(row=0, column=2, columnspan=2)
                 self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableS.pack()
                 
-                self.netqueueframeR = VerticalScrolledFrame(page5, height=100, width=40)
-                self.netqueueframeR.grid(row=5, column=3)
+                self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_out, height=100, width=40)
+                self.netqueueframeR.grid(row=0, column=2, columnspan=2)
                 self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableR.pack()
                 
                 # packet history
-                self.loadPacksFromPcap = Button(page5, text='Load from PCAP', command=self.scapybridgeS.loadPCAP)
-                self.loadPacksFromPcap.grid(row=2, column=5)
+                #
+                '''
                 self.pack_view = VerticalScrolledFrame(page5, height=300, width=60)
                 self.pack_view.canvas.config(height=700)
                 self.pack_view.grid(row=3, column=5, rowspan=3)
                 
                 self.rawtextS.configure(width=30)
                 self.rawtextR.configure(width=30)
+                '''
             else:
                 try:
                     self.netqueueframeS.destroy()
@@ -174,8 +183,8 @@ class Application(Frame):
                     self.pack_view.destroy()
                 except:
                     pass
-                self.rawtextS.configure(width=60)
-                self.rawtextR.configure(width=60)
+                #self.rawtextS.configure(width=60)
+                #self.rawtextR.configure(width=60)
 
         def sendFuzzer():
             print 'going to fuzz:'
@@ -183,42 +192,168 @@ class Application(Frame):
             self.fuzz_packet = FuzzPacket(self.scapybridgeS.current_pack, tbmg_=self)
             self.fuzz_packet.populateFuzzerGUI()
         
-        self.startproxy = Button(page5, text='Proxy Toggle', command=toggleProxyBoth)
+        def trafficTabHandle(args=None):
+            tab_text = self.traffic_tab.tab(self.traffic_tab.select(),"text")
+            print 'traffic tab handle', tab_text
+            if tab_text == "PCAP":
+                
+                
+                #self.scapybridgeS.loadPCAP()
+                print 'yes pcap'
+            try:
+                self.loadPacksFromPcap.destroy()
+            except:
+                pass
+                
+        self.red = '#e85151'
+        self.green = '#76ef51'
+        
+        self.startproxy = Button(page5, text='Proxy Toggle', command=toggleProxyBoth, bg=self.red)
         self.startproxy.grid(row=0, column=0)
         
-        self.intercept = Button(page5, text='Intercept On', command=toggleInterceptBoth)
+        self.intercept = Button(page5, text='Intercept Toggle', command=toggleInterceptBoth, bg=self.red)
         self.intercept.grid(row=0, column=1)
         
         self.savepcap = Button(page5, text='Save Traffic\nto PCAP', command=file_save)
-        self.savepcap.grid(row=0, column=3)
-        
-        self.sendoutfuzz = Button(page5,text='Send to Fuzzer',command=sendFuzzer)
-        self.sendoutfuzz.grid(row=0, column=4)
+        self.savepcap.grid(row=0, column=2)
 
         self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
-        self.defaultproxyfiltertext.grid(row=1, column=0)
+        self.defaultproxyfiltertext.grid(row=1, column=0, sticky='E')
         self.proxyfilter = Entry(page5)
         self.proxyfilter.bind("<Return>", setFilter)
-        self.proxyfilter.grid(row=1, column=1)
+        self.proxyfilter.grid(row=1, column=1,columnspan=3,sticky='WE')
         
-        #FOR SENDING/outgoing
-        self.rawviewS = Button(page5, text='Send Raw Outgoing', command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewS.grid(row=2, column=0)
-        self.disectviewS = Button(page5, text='Send Dissected\nOutgoing', command=self.scapybridgeS.sendDisectUpdate)
-        self.disectviewS.grid(row=2, column=1)
-        self.dropS = Button(page5, text='Drop Outgoing', command=self.scapybridgeS.sendDrop)
-        self.dropS.grid(row=2, column=3)
+        #traffic view
+        self.traffic_tab = ttk.Notebook(page5)
+        self.traffic_tab.bind('<Button-3>',trafficTabHandle)
+        self.traffic_tab.grid(row=2, column=0, columnspan=50, rowspan=49, sticky='WE')
+
+        self.grey = self.defaultproxyfiltertext.cget('background')
         
-        self.rawtextS = ScrolledText(page5, height=30, width=60)
-        self.rawtextS.grid(row=3, column=0)
-        self.rawtextS.insert(END,'RAWVIEW\n---\n')
+        #INCOMING
+        self.incoming_frame = Frame(self.traffic_tab)
+        self.traffic_tab.add(self.incoming_frame, text='Incoming')
+        self.view_tab_in = ttk.Notebook(self.incoming_frame)
+        self.view_tab_in.grid(row=0, column=0, columnspan=50, rowspan=49, sticky='EW')
         
-        self.disecttextS = ScrolledText(page5, height=30, width=60)#no intercept
-        self.disecttextS.grid(row=3, column=1)
+        self.raw_tab_in = Frame(self.view_tab_in)
+        self.view_tab_in.add(self.raw_tab_in, text='Raw')
+        self.rawtextR = ScrolledText(self.raw_tab_in, height=30, width=60)
+        self.rawtextR.grid(row=0, column=0, columnspan=5)
+        self.rawtextR.insert(END, 'RAWVIEW\n---\n')
+        self.rawviewR = Button(self.raw_tab_in, text='Accept', command=self.scapybridgeR.sendRawUpdate)
+        self.rawviewR.grid(row=1, column=0, sticky='SEW')
+        self.dropR = Button(self.raw_tab_in, text='Drop', command=self.scapybridgeR.sendDrop)
+        self.dropR.grid(row=1, column=1, sticky='SEW')
+        self.sendoutfuzz = Button(self.raw_tab_in, text='Send to Fuzzer', command=sendFuzzer)
+        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
+
+        self.disect_tab_in = Frame(self.view_tab_in)
+        self.view_tab_in.add(self.disect_tab_in, text='Disect')
+        self.disecttextR = ScrolledText(self.disect_tab_in, height=30, width=60)  # no intercept
+        self.disecttextR.grid(row=0, column=0, columnspan=5)
+        self.disecttextR.insert(END, 'DISECT\n---\n')
+        self.disectviewR = Button(self.disect_tab_in, text='Accept', command=self.scapybridgeR.sendDisectUpdate)
+        self.disectviewR.grid(row=1, column=0, sticky='SEW')
+        self.dropS = Button(self.disect_tab_in, text='Drop', command=self.scapybridgeR.sendDrop)
+        self.dropS.grid(row=1, column=1, sticky='SEW')
+        self.sendoutfuzz = Button(self.disect_tab_in, text='Send to Fuzzer', command=sendFuzzer)
+        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
+        self.disectlistR = None
+        self.disectLableR = None
+        
+        #OUTGOING
+        self.outgoing_frame = Frame(self.traffic_tab)
+        self.traffic_tab.add(self.outgoing_frame, text='Outgoing')
+        self.view_tab_out = ttk.Notebook(self.outgoing_frame)
+        self.view_tab_out.grid(row=0, column=0, sticky='EW')
+        
+        self.raw_tab_out = Frame(self.view_tab_out)
+        self.view_tab_out.add(self.raw_tab_out, text='Raw')
+        self.rawtextS = ScrolledText(self.raw_tab_out, height=30, width=60)
+        self.rawtextS.grid(row=0, column=0, columnspan=5)
+        self.rawtextS.insert(END, 'RAWVIEW\n---\n')
+        self.rawviewS = Button(self.raw_tab_out, text='Accept', command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewS.grid(row=1, column=0, sticky='SEW')
+        self.dropS = Button(self.raw_tab_out, text='Drop', command=self.scapybridgeS.sendDrop)
+        self.dropS.grid(row=1, column=1, sticky='SEW')
+        self.sendoutfuzz = Button(self.raw_tab_out, text='Send to Fuzzer', command=sendFuzzer)
+        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
+
+        self.disect_tab_out = Frame(self.view_tab_out)
+        self.view_tab_out.add(self.disect_tab_out, text='Disect')
+        self.disecttextS = ScrolledText(self.disect_tab_out, height=30, width=60)
+        self.disecttextS.grid(row=0, column=0, columnspan=5)
         self.disecttextS.insert(END, 'DISECT\n---\n')
+        self.disectviewS = Button(self.disect_tab_out, text='Accept', command=self.scapybridgeS.sendDisectUpdate)
+        self.disectviewS.grid(row=1, column=0, sticky='SEW')
+        self.dropS = Button(self.disect_tab_out, text='Drop', command=self.scapybridgeS.sendDrop)
+        self.dropS.grid(row=1, column=1, sticky='SEW')
+        self.sendoutfuzz = Button(self.disect_tab_out, text='Send to Fuzzer', command=sendFuzzer)
+        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
         self.disectlistS = None
         self.disectLableS = None
         
+        #PCAPs
+        self.pcap_frame = Frame(self.traffic_tab)
+        self.traffic_tab.add(self.pcap_frame, text='PCAP')
+        self.view_tab_pcap = ttk.Notebook(self.pcap_frame)
+        self.view_tab_pcap.grid(row=0, column=0)
+
+        self.pcap_tab = Frame(self.view_tab_pcap)
+        self.view_tab_pcap.add(self.pcap_tab, text='Packets')
+        self.loadPacksFromPcap = Button(self.pcap_tab, text='Load from PCAP', command=self.scapybridgeS.loadPCAP)
+        self.loadPacksFromPcap.grid(row=0, column=0, sticky='EW')
+        self.pack_view = VerticalScrolledFrame(self.pcap_tab, height=30, width=100)
+        self.pack_view.grid(row=1,column=0)
+        
+        self.raw_tab_pcap = Frame(self.view_tab_pcap)
+        self.view_tab_pcap.add(self.raw_tab_pcap, text='Raw')
+        self.rawtextP = ScrolledText(self.raw_tab_pcap, height=30, width=60)
+        self.rawtextP.grid(row=0, column=0, columnspan=5)
+        self.rawtextP.insert(END, 'RAWVIEW\n---\n')
+        self.rawviewP = Button(self.raw_tab_pcap, text='Send')#, command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewP.grid(row=1, column=0, sticky='SEW')
+        self.dropP = Button(self.raw_tab_pcap, text='Drop')  # , command=self.scapybridgeS.sendDrop)
+        self.dropP.grid(row=1, column=1, sticky='SEW')
+        self.rawviewPS = Button(self.raw_tab_pcap, text='Replace Outgoing\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewPS.grid(row=1, column=2, sticky='SEW')
+        self.rawviewPR = Button(self.raw_tab_pcap, text='Replace Incoming\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewPR.grid(row=1, column=3, sticky='SEW')
+        self.sendoutfuzz = Button(self.raw_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
+        self.sendoutfuzz.grid(row=1, column=4, sticky='EWS')
+
+        self.disect_tab_pcap = Frame(self.view_tab_pcap)
+        self.view_tab_pcap.add(self.disect_tab_pcap, text='Disect')
+        self.rawviewP = Button(self.disect_tab_pcap, text='Send')  # , command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewP.grid(row=1, column=0, sticky='SEW')
+        self.dropP = Button(self.disect_tab_pcap, text='Drop')  # , command=self.scapybridgeS.sendDrop)
+        self.dropP.grid(row=1, column=1, sticky='SEW')
+        self.rawviewPS = Button(self.disect_tab_pcap, text='Replace Outgoing\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewPS.grid(row=1, column=2, sticky='SEW')
+        self.rawviewPR = Button(self.disect_tab_pcap, text='Replace Incoming\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewPR.grid(row=1, column=3, sticky='SEW')
+        self.sendoutfuzz = Button(self.disect_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
+        self.sendoutfuzz.grid(row=1, column=4, sticky='EWS')
+        
+        '''
+        # intercept buttons
+        self.accept_button = Button(page5, text='Accept', command=self.scapybridgeS.sendRawUpdate)
+        self.accept_button.grid(row=50, column=0, sticky='EWS')
+
+        self.drop_button = Button(page5, text='Drop', command=self.scapybridgeS.sendDrop)
+        self.drop_button.grid(row=50, column=1, sticky='EWS')
+
+        self.sendoutfuzz = Button(page5,text='Send to Fuzzer',command=sendFuzzer)
+        self.sendoutfuzz.grid(row=50, column=2, sticky='EWS')
+        
+        #self.disectviewS = Button(page5, text='Send Dissected\nOutgoing', command=self.scapybridgeS.sendDisectUpdate)
+        #self.disectviewS.grid(row=2, column=1)
+        #self.dropS = Button(page5, text='Drop Outgoing', command=self.scapybridgeS.sendDrop)
+        #self.dropS.grid(row=2, column=3)
+        
+        #FOR SENDING/outgoing
+
         #FOR RECIVING/incoming
         self.rawviewR = Button(page5, text='Send Raw Incoming', command=self.scapybridgeR.sendRawUpdate)
         self.rawviewR.grid(row=4, column=0)
@@ -227,15 +362,7 @@ class Application(Frame):
         self.dropR = Button(page5, text='Drop Incoming', command=self.scapybridgeR.sendDrop)
         self.dropR.grid(row=4, column=3)
         
-        self.rawtextR = ScrolledText(page5, height=30, width=60)
-        self.rawtextR.grid(row=5, column=0)
-        self.rawtextR.insert(END, 'RAWVIEW\n---\n')
-
-        self.disecttextR = ScrolledText(page5, height=30, width=60)
-        self.disecttextR.grid(row=5, column=1)
-        self.disecttextR.insert(END, 'DISECT\n---\n')
-        self.disectlistR = None
-        self.disectLableR = None
+        '''
         #############################################################
         #############################################################
         self.page6 = page6
@@ -1225,7 +1352,16 @@ SynthDiffBG  = "#ffffcc"
 BTNEditedBG = "#eedddd"
 BTNNotEditedBG = None #uses default color
 
-nb = ttk.Notebook(root)
+nb0 = ttk.Notebook(root)
+nb0.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
+
+page_tbmg = ttk.Frame(nb0)
+nb0.add(page_tbmg, text='TBMG')
+
+page_proxy = ttk.Frame(nb0)
+nb0.add(page_proxy, text='ScapyProxy')
+
+nb = ttk.Notebook(page_tbmg)
 nb.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
 
 # Adds tab 1 of the notebook
@@ -1245,11 +1381,15 @@ nb.add(page3_5, text='Adv. Field', state=DISABLED)
 page4 = ttk.Frame(nb)
 nb.add(page4, text='Create Dissector')
 
-page5 = ttk.Frame(nb)
-nb.add(page5, text='Scapy Proxy')
 
-page6 = ttk.Frame(nb)
-nb.add(page6, text="Fuzzer")
+nb2 = ttk.Notebook(page_proxy)
+nb2.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
+
+page5 = ttk.Frame(nb2)
+nb2.add(page5, text='Scapy Proxy')
+
+page6 = ttk.Frame(nb2)
+nb2.add(page6, text="Fuzzer")
 
 app = Application(root)
 root.mainloop()
