@@ -17,6 +17,7 @@ from StringIO import StringIO
 import sys
 import tkFileDialog
 from ScrolledText import ScrolledText
+import datetime
 
 
 class ScapyBridge(object):
@@ -623,13 +624,18 @@ class ScapyBridge(object):
             if self.intercepting:
                 id = time.time()  # self.getID()
                 if self.is_outgoing:
-                    button = Button(self.tbmg.netqueueframeS.interior,text=str(num) + ":" + packet.summary(),
-                                    width="80", command=lambda: skipAhead(num))
+                    test_frame = Frame(self.tbmg.netqueueframeS.interior)
                 else:
-                    button = Button(self.tbmg.netqueueframeR.interior, text=str(num) + ":" + packet.summary(),
-                                    width="80", command=lambda: skipAhead(num))
-                button.pack()
-                self.packet_queue.append([1, packet, id, button])
+                    test_frame = Frame(self.tbmg.netqueueframeR.interior)
+                button = Button(test_frame, text=str(num) + ":" + packet.summary(),
+                                width="80", command=lambda: skipAhead(num))
+                timelabel = Label(test_frame, text=(datetime.datetime.now().strftime("%H:%M:%S.%f") + '; 0'))
+                button.grid(row=0,column=0)
+                timelabel.grid(row=0,column=1)
+                test_frame.pack()
+                
+                self.tbmg.timers.append(timelabel)
+                self.packet_queue.append([1, packet, id, button,timelabel])
             
             # lock - one at a time get to render,
             print 'want lock'
@@ -639,7 +645,8 @@ class ScapyBridge(object):
             if not self.status:
                 print 'I should not be on...'
                 try:
-                    button.destroy()
+                    test_frame.destroy()
+                    self.tbmg.timers.remove(timelabel)
                 except:
                     pass
                 self.display_lock.release()
@@ -650,8 +657,9 @@ class ScapyBridge(object):
                     return
             #if self.skip_to_pack_num:
             if num < self.skip_to_pack_num:
-                print 'skipping! im at',str(num)
-                button.destroy()
+                print 'skipping! im at', str(num)
+                test_frame.destroy()
+                self.tbmg.timers.remove(timelabel)
                 self.display_lock.release()
                 if data:
                     return data, interceptor.NF_ACCEPT
@@ -692,7 +700,8 @@ class ScapyBridge(object):
                 if recv == 'drop':
                     print 'DROPING'
                     self.display_lock.release()
-                    button.destroy()
+                    test_frame.destroy()
+                    self.tbmg.timers.remove(timelabel)
                     #TODO efficently delte self from packet queue
                     if data:
                         return data, interceptor.NF_DROP
@@ -704,7 +713,8 @@ class ScapyBridge(object):
                         pass
                     self.clearRaw()
                     self.display_lock.release()
-                    button.destroy()
+                    test_frame.destroy()
+                    self.tbmg.timers.remove(timelabel)
                     if data:
                         return data, interceptor.NF_ACCEPT
                     elif self.intercepting:
@@ -748,7 +758,8 @@ class ScapyBridge(object):
                     elif self.intercepting:
                         sendp(self.current_pack)
                         return
-                button.destroy()
+                test_frame.destroy()
+                self.tbmg.timers.remove(timelabel)
                 self.display_lock.release()
                 # TODO efficently delte self from packet queue
                 if data:
@@ -759,7 +770,8 @@ class ScapyBridge(object):
             else:
                 print 'not intercpeting..'
                 try:
-                    button.destroy()
+                    test_frame.destroy()
+                    self.tbmg.timers.remove(timelabel)
                 except:
                     pass
                 if self.is_outgoing:

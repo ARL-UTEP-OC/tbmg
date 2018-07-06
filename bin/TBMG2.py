@@ -26,6 +26,7 @@ import threading
 from scapyProxy.GuiUtils import VerticalScrolledFrame
 import netifaces
 from scapyProxy.AFLScapy import FuzzPacket
+import datetime
 
 class Application(Frame):
     def __init__(self, master):
@@ -204,6 +205,7 @@ class Application(Frame):
                 
         self.red = '#e85151'
         self.green = '#76ef51'
+        self.yellow = '#f4e542'
         
         self.startproxy = Button(page5, text='Proxy Toggle', command=toggleProxyBoth, bg=self.red)
         self.startproxy.grid(row=0, column=0)
@@ -363,7 +365,23 @@ class Application(Frame):
         #############################################################
         #############################################################
         self.page6 = page6
+        self.timers = []
+        self.updateTimers()
         
+    def updateTimers(self):
+        now = datetime.datetime.now().strftime("%H:%M:%S.%f")
+        now_time = datetime.datetime.strptime(now, '%H:%M:%S.%f')
+        for timer in self.timers:
+            old = timer.cget('text').split(';')[0]
+            old_time = datetime.datetime.strptime(old, '%H:%M:%S.%f')
+            secs = (now_time-old_time).seconds
+            timer.config(text=(old + '; ' + str(secs)))
+            if secs>30:
+                timer.config(bg=self.red)
+            elif secs >15:
+                timer.config(bg=self.yellow)
+        root.after(5000, self.updateTimers)
+            
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
 		if self.transport != None:
 			self.ports.grid_remove()
