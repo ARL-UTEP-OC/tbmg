@@ -1,6 +1,7 @@
 import sys
-sys.path.insert(0,'../')
+sys.path.insert(0, '../')
 from Tkinter import *
+from ttkthemes import themed_tk
 from ScrolledText import ScrolledText
 from tkFileDialog import askopenfilename
 import tkMessageBox
@@ -153,12 +154,12 @@ class Application(Frame):
         def extraInterceptedGUI(is_intercepting):
             if is_intercepting:
                 # intercpetd queue
-                self.netqueueframeS = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
+                self.netqueueframeS = VerticalScrolledFrame(self.disect_tab_out, height=100, width=40)
                 self.netqueueframeS.grid(row=0, column=2, columnspan=2)
                 self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableS.pack()
                 
-                self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_out, height=100, width=40)
+                self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
                 self.netqueueframeR.grid(row=0, column=2, columnspan=2)
                 self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableR.pack()
@@ -188,22 +189,18 @@ class Application(Frame):
 
         def sendFuzzer():
             print 'going to fuzz:'
-            self.scapybridgeS.current_pack.show()
-            self.fuzz_packet = FuzzPacket(self.scapybridgeS.current_pack, tbmg_=self)
+            tab_text = self.traffic_tab.tab(self.traffic_tab.select(), "text")
+            print 'traffic tab handle', tab_text
+            if tab_text == 'Incoming':
+                self.fuzz_packet = FuzzPacket(self.scapybridgeR.current_pack, tbmg_=self)
+            else:
+                self.fuzz_packet = FuzzPacket(self.scapybridgeS.current_pack, tbmg_=self)
             self.fuzz_packet.populateFuzzerGUI()
         
         def trafficTabHandle(args=None):
             tab_text = self.traffic_tab.tab(self.traffic_tab.select(),"text")
             print 'traffic tab handle', tab_text
-            if tab_text == "PCAP":
-                
-                
-                #self.scapybridgeS.loadPCAP()
-                print 'yes pcap'
-            try:
-                self.loadPacksFromPcap.destroy()
-            except:
-                pass
+            
                 
         self.red = '#e85151'
         self.green = '#76ef51'
@@ -264,7 +261,7 @@ class Application(Frame):
         
         #OUTGOING
         self.outgoing_frame = Frame(self.traffic_tab)
-        self.traffic_tab.add(self.outgoing_frame, text='Outgoing')
+        self.traffic_tab.add(self.outgoing_frame, text='Outgoing/Forwarded')
         self.view_tab_out = ttk.Notebook(self.outgoing_frame)
         self.view_tab_out.grid(row=0, column=0, sticky='EW')
         
@@ -1345,12 +1342,15 @@ layers = []
 layerindex = []
 fieldArray = []
 hidden = True
-root = Tk()
+root = themed_tk.ThemedTk() #Tk()
+root.set_theme('elegance')
 root.title("Traffic Based Model Generator")
 SynthMatchBG = "#ddddee"
 SynthDiffBG  = "#ffffcc"
 BTNEditedBG = "#eedddd"
 BTNNotEditedBG = None #uses default color
+
+
 
 nb0 = ttk.Notebook(root)
 nb0.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')

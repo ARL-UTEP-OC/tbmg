@@ -122,8 +122,13 @@ class ScapyBridge(object):
             else:
                 text = str(self.tbmg.rawtextR.get('0.0', END)).strip()
             print 'updating to:', text
-            self.parent_conn.send('raw')
-            self.parent_conn.send(text)
+            if self.status:
+                self.parent_conn.send('raw')
+                self.parent_conn.send(text)
+            else:
+                print 'going to send...'
+                sendp(self.current_pack)
+                print 'send packet'
     
     def sendDisectUpdate(self):
         if not self.intercepting:
@@ -136,10 +141,11 @@ class ScapyBridge(object):
             if not self.gui_layers or len(self.tbmg.disectlistR.interior.grid_slaves()) < 2:
                 return
         #update packet based on GUI
+        self.current_pack.show2()
         for layer in self.gui_layers:
             if layer and layer in self.current_pack:
                 for pair in self.gui_layers[layer]:
-                    type1 = getattr(self.current_pack[layer], pair[1].cget('text'))  # correct type for feild
+                    type1 = type(getattr(self.current_pack[layer], pair[1].cget('text')))  # correct type for feild
                     type2 = None
                     value = None
                     try:
@@ -157,9 +163,29 @@ class ScapyBridge(object):
                     # TODO add protocol exceptions here!
                     try:
                         if type(value) == str and type1 == str:
-                            if int(value[1:-1], 16):
-                                value = '"' + value[1:-1].decode('hex') + '"'
-                                print('found HEX', value)
+                            hex_value = value
+                            if hex_value[0] == '"':
+                                hex_value=hex_value[1:-1]
+                            if int(hex_value, 16):
+                                ok = True
+                                for letter in hex_value:
+                                    num = int(letter.encode('hex'))
+                                    if not((num >=  int('a'.encode('hex')) and num <=  int('f'.encode('hex'))) or
+                                           (num >= int('A'.encode('hex')) and num <= int('F'.encode('hex'))) or
+                                           (num >= int('0'.encode('hex')) and num <= int('9'.encode('hex')))):
+                                        ok = False
+                                        #print letter + ' - is not ok with:', num
+                                        break
+                                    else:
+                                        pass
+                                        #print letter+' - is ok with:',num
+                                if ok:
+                                    #value = '"' + value[1:-1].decode('hex') + '"'
+                                    print 'should be ok HEX:',hex_value
+                                    hex_value = hex_value.decode('hex')
+                                    self.current_pack[layer].fields[pair[1].cget('text')] = hex_value
+                                    print('found HEX', hex_value, 'org had:',getattr(self.current_pack[layer], pair[1].cget('text')), 'at:',pair[1].cget('text'))
+                                    continue
                     except Exception:
                         pass
                         # print value,'not HEX',e
@@ -167,13 +193,22 @@ class ScapyBridge(object):
                         #print 'found array type:'+value
                         value = value[1:-1]
                     elif value == '"None"':
-                        if type1 == type(None):
+                        if type1 == type(None) or not getattr(self.current_pack[layer], pair[1].cget('text')):
                             continue
                         if type1 == int:
                             value = '0'
                         else:
+                            print 'set NONE 1:',getattr(self.current_pack[layer], pair[1].cget('text'))
                             value = 'None'
                     elif value == '""':
+                        if not getattr(self.current_pack[layer], pair[1].cget('text')):
+                            continue
+                        try:
+                            if not int(str(getattr(self.current_pack[layer], pair[1].cget('text'))).encode('hex')):
+                                continue
+                        except:
+                            pass
+                        print 'set NONE 2:',getattr(self.current_pack[layer], pair[1].cget('text'))
                         value = 'None'
                     if layer == 'Raw' and pair[1].cget('text') == 'load':  # ping 8.8.4.4
                         try:
@@ -198,9 +233,12 @@ class ScapyBridge(object):
                             #print('setting:', execute)
                             #print 'oldval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text')))
                             setattr(self.current_pack[layer], pair[1].cget('text'), eval(value))
-                            print 'newval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text')))
+                            print 'newval->',getattr(self.current_pack[layer],pair[1].cget('text')),type(getattr(self.current_pack[layer],pair[1].cget('text'))), '@'+pair[1].cget('text'),'was:',type1
                     except Exception, e:
                         print 'setattr err:',e,'->',"self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
+        
+        self.current_pack.show()
+        self.current_pack.show2()
         r = raw(self.current_pack)
         print('producing from disect:', r.encode('hex'))
         if self.status and self.intercepting:
@@ -229,12 +267,66 @@ class ScapyBridge(object):
     
     def _packet_disect_intercept(self, pack, overwrite_current_pack=False):
         self.clearDisect()
-        if overwrite_current_pack:
+        if overwrite_current_pack:#used to deal w/ pcap loads
             self.current_pack = pack
         self.gui_layers = {}
         rownum = 1
         #$pack.show()
-        if self.is_outgoing:
+        if overwrite_current_pack == 3:
+            for i in range(10):
+                try:
+                    l = pack.getlayer(i)
+                    if not l:
+                        continue
+                    self.gui_layers[l.name] = []
+                    layer = Label(self.tbmg.disectlistP.interior, text=l.name)
+                    layer.grid(row=rownum, column=0)
+                    rownum += 1
+                    if l.name == 'Ethernet' or l.name == 'Ether':
+                        label = Label(self.tbmg.disectlistP.interior, text='src')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistP.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].src).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                
+                        label = Label(self.tbmg.disectlistP.interior, text='dst')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistP.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].dst).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                
+                        label = Label(self.tbmg.disectlistP.interior, text='type')
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistP.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        entry.insert(0, str(pack[0].type).encode('utf8'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                        continue
+            
+                    for f in l.fields:
+                        label = Label(self.tbmg.disectlistP.interior, text=str(f))
+                        label.grid(row=rownum, column=1)
+                        entry = Entry(self.tbmg.disectlistP.interior, width=30)
+                        entry.grid(row=rownum, column=2)
+                        try:
+                            entry.insert(0, str(l.fields[f]).encode('utf8'))
+                        except:
+                            # print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
+                            entry.insert(0, str(l.fields[f]).encode('hex'))
+                        self.gui_layers[l.name].append((layer, label, entry))
+                        rownum += 1
+                except Exception, e:
+                    print 'print disect yes intercpet error', e
+                    break
+        elif self.is_outgoing:
+            if overwrite_current_pack:
+                self.clearRaw()
+                self.tbmg.rawtextS.insert('0.0', str(raw(self.current_pack)).encode('hex'))
             for i in range(10):
                 try:
                     l = pack.getlayer(i)
@@ -287,6 +379,9 @@ class ScapyBridge(object):
                     print 'print disect yes intercpet error', e
                     break
         else:
+            if overwrite_current_pack:
+                self.clearRaw()
+                self.tbmg.rawtextR.insert('0.0', str(raw(self.current_pack)).encode('hex'))
             for i in range(10):
                 try:
                     l = pack.getlayer(i)
@@ -331,7 +426,7 @@ class ScapyBridge(object):
                         try:
                             entry.insert(0, str(l.fields[f]).encode('utf8'))
                         except:
-                            # print('FOUND ODD ENCODING:', chardet.detect(str(l.fields[f])))
+                            print('FOUND ODD ENCODING:', f)
                             entry.insert(0, str(l.fields[f]).encode('hex'))
                         self.gui_layers[l.name].append((layer, label, entry))
                         rownum += 1

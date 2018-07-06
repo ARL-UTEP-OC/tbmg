@@ -27,6 +27,8 @@ pip install scapy
 pip install chardet
 #for AFL
 #pip2 install python-afl
+python -m pip install -U pip setuptools
+python -m pip install ttkthemes
 
 echo "#!/usr/bin/env bash" > start_tbmg.sh
 echo "#The name of the container used during installation" >> start_tbmg.sh
