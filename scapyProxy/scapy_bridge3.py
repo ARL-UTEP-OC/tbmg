@@ -53,8 +53,19 @@ class ScapyBridge(object):
         self.arp_stop = False
         self.arp_sniff_thread = Thread(target=self.arpSniff)
         self.arp_sniff_thread.setDaemon(True)
+        self.loadSettings()
         
-        
+    def loadSettings(self):
+        self.proto_colors ={}
+        color_config = open('/root/tbmg/scapyProxy/color_config.csv','r')
+        for line in color_config.readlines():
+            try:
+                proto,color = line.strip().split(',')
+                self.proto_colors[proto.strip()] = color.strip()
+            except:
+                print 'bad line'
+        color_config.close()
+    
     #only run in one scapy_bridge instance
     def loadPCAP(self):
         def popUP(i):
@@ -89,6 +100,8 @@ class ScapyBridge(object):
         for p in packets:
             print (i, p.summary())
             b = Button(self.tbmg.pack_view.interior, text=p.summary(), width=50, command=lambda j=i: popUP(j))
+            if p.lastlayer().name in self.proto_colors:
+                b.config(bg=(self.proto_colors[p.lastlayer().name]))
             #TODO add popup w/ packet details
             b.grid(row=i, column=0)
             self.pack_view_packs.append(p)
@@ -629,6 +642,20 @@ class ScapyBridge(object):
                     test_frame = Frame(self.tbmg.netqueueframeR.interior)
                 button = Button(test_frame, text=str(num) + ":" + packet.summary(),
                                 width="80", command=lambda: skipAhead(num))
+                if packet.lastlayer().name in self.proto_colors:
+                    button.config(bg=(self.proto_colors[packet.lastlayer().name]))
+                else:
+                    print 'counld not color:',packet.lastlayer().name
+                    temp_pack = packet.copy()
+                    while 1:
+                        try:
+                            if temp_pack.lastlayer().name in self.proto_colors:
+                                button.config(bg=(self.proto_colors[temp_pack.lastlayer().name]))
+                                break
+                            del(temp_pack[temp_pack.lastlayer().name])
+                        except:
+                            break
+                    
                 timelabel = Label(test_frame, text=(datetime.datetime.now().strftime("%H:%M:%S.%f") + '; 0'))
                 button.grid(row=0,column=0)
                 timelabel.grid(row=0,column=1)
