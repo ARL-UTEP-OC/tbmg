@@ -32,14 +32,26 @@ class Application(Frame):
     def __init__(self, master):
         """initialize the frame"""
         Frame.__init__(self,master)
-        self.grid()
+        top = self.winfo_toplevel()
+        top.rowconfigure(0, weight=1)
+        top.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.grid(sticky='NESW')
         self.create_widgets()
 
     def create_widgets(self):
-        self.protocol = Label(page1, text = "Protocol Name:")
-        self.protocol.grid(row = 1, column = 0,  sticky = W)
+        self.expand1 = Label(page1, text='')
+        self.expand1.grid(row=0, column=1, sticky='NEWS', columnspan=50)
+        expand_h.append(self.expand1)
+        #self.expand2 = Label(page1, text='')
+        #self.expand2.grid(row=0, column=0, sticky='NEWS', rowspan=50)
+        #expand_v.append(self.expand2)
+        
+        self.protocol = Label(page1, text="Protocol Name:")
+        self.protocol.grid(row=1, column=0,  sticky = W)
         self.proto = Entry(page1)
-        self.proto.grid(row = 1, column = 1,  sticky = W)
+        self.proto.grid(row=1, column=1,  sticky = W)
 
 
         self.pcapFile = Label(page1, text="Pcap File Path:")
@@ -164,17 +176,7 @@ class Application(Frame):
                 self.netqueueframeR.grid(row=0, column=2, columnspan=2)
                 self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableR.pack()
-                
-                # packet history
-                #
-                '''
-                self.pack_view = VerticalScrolledFrame(page5, height=300, width=60)
-                self.pack_view.canvas.config(height=700)
-                self.pack_view.grid(row=3, column=5, rowspan=3)
-                
-                self.rawtextS.configure(width=30)
-                self.rawtextR.configure(width=30)
-                '''
+
             else:
                 try:
                     self.netqueueframeS.destroy()
@@ -185,8 +187,6 @@ class Application(Frame):
                     self.pack_view.destroy()
                 except:
                     pass
-                #self.rawtextS.configure(width=60)
-                #self.rawtextR.configure(width=60)
 
         def sendFuzzer():
             print 'going to fuzz:'
@@ -207,161 +207,141 @@ class Application(Frame):
         self.green = '#76ef51'
         self.yellow = '#f4e542'
         
+        self.expand3 = Label(page5, text='')
+        self.expand3.grid(row=0, column=0, sticky='NEWS', columnspan=50)
+        expand_h.append(self.expand3)
+        self.expand4 = Label(page5, text='')
+        self.expand4.grid(row=0, column=0, sticky='NES', rowspan=50,columnspan=50)
+        expand_v.append(self.expand4)
+        
         self.startproxy = Button(page5, text='Proxy Toggle', command=toggleProxyBoth, bg=self.red)
-        self.startproxy.grid(row=0, column=0)
+        self.startproxy.grid(row=0, column=0+1, sticky='NEWS')
         
         self.intercept = Button(page5, text='Intercept Toggle', command=toggleInterceptBoth, bg=self.red)
-        self.intercept.grid(row=0, column=1)
+        self.intercept.grid(row=0, column=1+1, sticky='NEWS')
         
         self.savepcap = Button(page5, text='Save Traffic\nto PCAP', command=file_save)
-        self.savepcap.grid(row=0, column=2)
+        self.savepcap.grid(row=0, column=2+1, sticky='NEWS')
 
         self.defaultproxyfiltertext = Button(page5, text="Filter:", command=setFilter)
-        self.defaultproxyfiltertext.grid(row=1, column=0, sticky='E')
+        self.defaultproxyfiltertext.grid(row=1, column=0+1, sticky='NEWS')
         self.proxyfilter = Entry(page5)
         self.proxyfilter.bind("<Return>", setFilter)
-        self.proxyfilter.grid(row=1, column=1,columnspan=3,sticky='WE')
+        self.proxyfilter.grid(row=1, column=1+1, columnspan=3, sticky='NEWS')
         
         #traffic view
-        self.traffic_tab = ttk.Notebook(page5)
+        self.traffic_tab = AutoresizedNotebookChild(page5)
         self.traffic_tab.bind('<Button-3>',trafficTabHandle)
-        self.traffic_tab.grid(row=2, column=0, columnspan=50, rowspan=49, sticky='WE')
+        self.traffic_tab.grid(row=2, column=0+1, columnspan=50, rowspan=49, sticky='NEWS')
 
         self.grey = self.defaultproxyfiltertext.cget('background')
         
         #INCOMING
         self.incoming_frame = Frame(self.traffic_tab)
         self.traffic_tab.add(self.incoming_frame, text='Incoming')
-        self.view_tab_in = ttk.Notebook(self.incoming_frame)
-        self.view_tab_in.grid(row=0, column=0, columnspan=50, rowspan=49, sticky='EW')
+        self.view_tab_in = AutoresizedNotebookChild(self.incoming_frame)
+        self.view_tab_in.grid(row=0, column=0+1, columnspan=50, rowspan=49, sticky='NEWS')
         
         self.raw_tab_in = Frame(self.view_tab_in)
-        self.view_tab_in.add(self.raw_tab_in, text='Raw')
+        self.view_tab_in.add(self.raw_tab_in, text='Raw',sticky='NESW')
         self.rawtextR = ScrolledText(self.raw_tab_in, height=30, width=60)
-        self.rawtextR.grid(row=0, column=0, columnspan=5)
+        self.rawtextR.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.rawtextR.insert(END, 'RAWVIEW\n---\n')
         self.rawviewR = Button(self.raw_tab_in, text='Accept', command=self.scapybridgeR.sendRawUpdate)
-        self.rawviewR.grid(row=1, column=0, sticky='SEW')
+        self.rawviewR.grid(row=1, column=0+1, sticky='SEW')
         self.dropR = Button(self.raw_tab_in, text='Drop', command=self.scapybridgeR.sendDrop)
-        self.dropR.grid(row=1, column=1, sticky='SEW')
+        self.dropR.grid(row=1, column=1+1, sticky='SEW')
         self.sendoutfuzz = Button(self.raw_tab_in, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
+        self.sendoutfuzz.grid(row=1, column=2+1, sticky='SEW')
 
         self.disect_tab_in = Frame(self.view_tab_in)
-        self.view_tab_in.add(self.disect_tab_in, text='Disect')
+        self.view_tab_in.add(self.disect_tab_in, text='Disect', sticky='NESW')
         self.disecttextR = ScrolledText(self.disect_tab_in, height=30, width=60)  # no intercept
-        self.disecttextR.grid(row=0, column=0, columnspan=5)
+        self.disecttextR.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.disecttextR.insert(END, 'DISECT\n---\n')
         self.disectviewR = Button(self.disect_tab_in, text='Accept', command=self.scapybridgeR.sendDisectUpdate)
-        self.disectviewR.grid(row=1, column=0, sticky='SEW')
+        self.disectviewR.grid(row=1, column=0+1, sticky='SEW')
         self.dropS = Button(self.disect_tab_in, text='Drop', command=self.scapybridgeR.sendDrop)
-        self.dropS.grid(row=1, column=1, sticky='SEW')
+        self.dropS.grid(row=1, column=1+1, sticky='SEW')
         self.sendoutfuzz = Button(self.disect_tab_in, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
+        self.sendoutfuzz.grid(row=1, column=2+1, sticky='SEW')
         self.disectlistR = None
         self.disectLableR = None
         
         #OUTGOING
         self.outgoing_frame = Frame(self.traffic_tab)
-        self.traffic_tab.add(self.outgoing_frame, text='Outgoing/Forwarded')
-        self.view_tab_out = ttk.Notebook(self.outgoing_frame)
-        self.view_tab_out.grid(row=0, column=0, sticky='EW')
+        self.traffic_tab.add(self.outgoing_frame, text='Outgoing/Forwarded', sticky='NESW')
+        self.view_tab_out = AutoresizedNotebookChild(self.outgoing_frame)
+        self.view_tab_out.grid(row=0, column=0+1, sticky='EW')
         
         self.raw_tab_out = Frame(self.view_tab_out)
-        self.view_tab_out.add(self.raw_tab_out, text='Raw')
+        self.view_tab_out.add(self.raw_tab_out, text='Raw', sticky='NESW')
         self.rawtextS = ScrolledText(self.raw_tab_out, height=30, width=60)
-        self.rawtextS.grid(row=0, column=0, columnspan=5)
+        self.rawtextS.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.rawtextS.insert(END, 'RAWVIEW\n---\n')
         self.rawviewS = Button(self.raw_tab_out, text='Accept', command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewS.grid(row=1, column=0, sticky='SEW')
+        self.rawviewS.grid(row=1, column=0+1, sticky='SEW')
         self.dropS = Button(self.raw_tab_out, text='Drop', command=self.scapybridgeS.sendDrop)
-        self.dropS.grid(row=1, column=1, sticky='SEW')
+        self.dropS.grid(row=1, column=1+1, sticky='SEW')
         self.sendoutfuzz = Button(self.raw_tab_out, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
+        self.sendoutfuzz.grid(row=1, column=2+1, sticky='SEW')
 
         self.disect_tab_out = Frame(self.view_tab_out)
-        self.view_tab_out.add(self.disect_tab_out, text='Disect')
+        self.view_tab_out.add(self.disect_tab_out, text='Disect', sticky='NESW')
         self.disecttextS = ScrolledText(self.disect_tab_out, height=30, width=60)
-        self.disecttextS.grid(row=0, column=0, columnspan=5)
+        self.disecttextS.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.disecttextS.insert(END, 'DISECT\n---\n')
         self.disectviewS = Button(self.disect_tab_out, text='Accept', command=self.scapybridgeS.sendDisectUpdate)
-        self.disectviewS.grid(row=1, column=0, sticky='SEW')
+        self.disectviewS.grid(row=1, column=0+1, sticky='SEW')
         self.dropS = Button(self.disect_tab_out, text='Drop', command=self.scapybridgeS.sendDrop)
-        self.dropS.grid(row=1, column=1, sticky='SEW')
+        self.dropS.grid(row=1, column=1+1, sticky='SEW')
         self.sendoutfuzz = Button(self.disect_tab_out, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=2, sticky='EWS')
+        self.sendoutfuzz.grid(row=1, column=2+1, sticky='SEW')
         self.disectlistS = None
         self.disectLableS = None
         
         #PCAPs
         self.pcap_frame = Frame(self.traffic_tab)
-        self.traffic_tab.add(self.pcap_frame, text='PCAP')
-        self.view_tab_pcap = ttk.Notebook(self.pcap_frame)
-        self.view_tab_pcap.grid(row=0, column=0)
+        self.traffic_tab.add(self.pcap_frame, text='PCAP', sticky='NESW')
+        self.view_tab_pcap = AutoresizedNotebookChild(self.pcap_frame)
+        self.view_tab_pcap.grid(row=0, column=0+1, sticky='NEWS')
 
         self.pcap_tab = Frame(self.view_tab_pcap)
-        self.view_tab_pcap.add(self.pcap_tab, text='Packets')
+        self.view_tab_pcap.add(self.pcap_tab, text='Packets', sticky='NESW')
         self.loadPacksFromPcap = Button(self.pcap_tab, text='Load from PCAP', command=self.scapybridgeS.loadPCAP)
-        self.loadPacksFromPcap.grid(row=0, column=0, sticky='EW')
+        self.loadPacksFromPcap.grid(row=0, column=0+1, sticky='NEWS')
         self.pack_view = VerticalScrolledFrame(self.pcap_tab, height=30, width=100)
-        self.pack_view.grid(row=1,column=0)
+        self.pack_view.grid(row=1,column=0+1, sticky='NEWS')
         
         self.raw_tab_pcap = Frame(self.view_tab_pcap)
-        self.view_tab_pcap.add(self.raw_tab_pcap, text='Raw')
+        self.view_tab_pcap.add(self.raw_tab_pcap, text='Raw', sticky='NESW')
         self.rawtextP = ScrolledText(self.raw_tab_pcap, height=30, width=60)
-        self.rawtextP.grid(row=0, column=0, columnspan=5)
+        self.rawtextP.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.rawtextP.insert(END, 'RAWVIEW\n---\n')
         self.rawviewP = Button(self.raw_tab_pcap, text='Send')#, command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewP.grid(row=1, column=0, sticky='SEW')
+        self.rawviewP.grid(row=1, column=0+1, sticky='SEW')
         self.dropP = Button(self.raw_tab_pcap, text='Drop')  # , command=self.scapybridgeS.sendDrop)
-        self.dropP.grid(row=1, column=1, sticky='SEW')
+        self.dropP.grid(row=1, column=1+1, sticky='SEW')
         self.rawviewPS = Button(self.raw_tab_pcap, text='Replace Outgoing\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewPS.grid(row=1, column=2, sticky='SEW')
+        self.rawviewPS.grid(row=1, column=2+1, sticky='SEW')
         self.rawviewPR = Button(self.raw_tab_pcap, text='Replace Incoming\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewPR.grid(row=1, column=3, sticky='SEW')
+        self.rawviewPR.grid(row=1, column=3+1, sticky='SEW')
         self.sendoutfuzz = Button(self.raw_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=4, sticky='EWS')
+        self.sendoutfuzz.grid(row=1, column=4+1, sticky='SEW')
 
         self.disect_tab_pcap = Frame(self.view_tab_pcap)
-        self.view_tab_pcap.add(self.disect_tab_pcap, text='Disect')
+        self.view_tab_pcap.add(self.disect_tab_pcap, text='Disect', sticky='NESW')
         self.rawviewP = Button(self.disect_tab_pcap, text='Send')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewP.grid(row=1, column=0, sticky='SEW')
+        self.rawviewP.grid(row=1, column=0+1, sticky='SEW')
         self.dropP = Button(self.disect_tab_pcap, text='Drop')  # , command=self.scapybridgeS.sendDrop)
-        self.dropP.grid(row=1, column=1, sticky='SEW')
+        self.dropP.grid(row=1, column=1+1, sticky='SEW')
         self.rawviewPS = Button(self.disect_tab_pcap, text='Replace Outgoing\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewPS.grid(row=1, column=2, sticky='SEW')
+        self.rawviewPS.grid(row=1, column=2+1, sticky='SEW')
         self.rawviewPR = Button(self.disect_tab_pcap, text='Replace Incoming\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewPR.grid(row=1, column=3, sticky='SEW')
+        self.rawviewPR.grid(row=1, column=3+1, sticky='SEW')
         self.sendoutfuzz = Button(self.disect_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=4, sticky='EWS')
-        
-        '''
-        # intercept buttons
-        self.accept_button = Button(page5, text='Accept', command=self.scapybridgeS.sendRawUpdate)
-        self.accept_button.grid(row=50, column=0, sticky='EWS')
+        self.sendoutfuzz.grid(row=1, column=4+1, sticky='SEW')
 
-        self.drop_button = Button(page5, text='Drop', command=self.scapybridgeS.sendDrop)
-        self.drop_button.grid(row=50, column=1, sticky='EWS')
-
-        self.sendoutfuzz = Button(page5,text='Send to Fuzzer',command=sendFuzzer)
-        self.sendoutfuzz.grid(row=50, column=2, sticky='EWS')
-        
-        #self.disectviewS = Button(page5, text='Send Dissected\nOutgoing', command=self.scapybridgeS.sendDisectUpdate)
-        #self.disectviewS.grid(row=2, column=1)
-        #self.dropS = Button(page5, text='Drop Outgoing', command=self.scapybridgeS.sendDrop)
-        #self.dropS.grid(row=2, column=3)
-        
-        #FOR SENDING/outgoing
-
-        #FOR RECIVING/incoming
-        self.rawviewR = Button(page5, text='Send Raw Incoming', command=self.scapybridgeR.sendRawUpdate)
-        self.rawviewR.grid(row=4, column=0)
-        self.disectviewR = Button(page5, text='Send Dissected\nIncoming', command=self.scapybridgeR.sendDisectUpdate)
-        self.disectviewR.grid(row=4, column=1)
-        self.dropR = Button(page5, text='Drop Incoming', command=self.scapybridgeR.sendDrop)
-        self.dropR.grid(row=4, column=3)
-        
-        '''
         #############################################################
         #############################################################
         self.page6 = page6
@@ -1338,6 +1318,98 @@ def FlagActualSend(onoff):
 	else:
 		os.remove(fname)
 
+root_widgit=None
+root_tab=None
+# http://code.activestate.com/recipes/580726-tkinter-notebook-that-fits-to-the-height-of-every-/
+class AutoresizedNotebook(ttk.Notebook):
+    
+    def __init__(self, master=None, **kw):
+        ttk.Notebook.__init__(self, master, **kw)
+        self.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+    
+    def _on_tab_changed(self, event):
+        global root_widgit
+        global root_tab
+        event.widget.update_idletasks()
+        tab = event.widget.nametowidget(event.widget.select())
+        event.widget.configure(height=tab.winfo_reqheight())
+        event.widget.configure(width=tab.winfo_reqwidth())
+        root_widgit = event.widget
+        root_tab = tab
+
+
+# http://code.activestate.com/recipes/580726-tkinter-notebook-that-fits-to-the-height-of-every-/
+class AutoresizedNotebookChild(ttk.Notebook):
+    
+    def __init__(self, master=None, **kw):
+        ttk.Notebook.__init__(self, master, **kw)
+        self.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+    
+    def _on_tab_changed(self, event):
+        global root_widgit
+        event.widget.update_idletasks()
+        root_widgit.configure(height=root_tab.winfo_reqheight())
+        root_widgit.configure(width=root_tab.winfo_reqwidth())
+
+def updateResize(event):
+    global skip_resize
+    global init_req_h
+    global init_req_v
+    if skip_resize < 100:
+        skip_resize += 1
+        return
+    #'''
+    while 1:
+        try:
+            if not init_req_h:
+                init_req_h = page_tbmg.winfo_reqwidth()
+                for e in expand_h:
+                    e.config(width=1)
+                skip_resize=0
+                break
+            if event.width < init_req_h:
+                for e in expand_h:
+                    e.config(width=1)
+                skip_resize=0
+                break
+            for e in expand_h:
+                if e.cget('width') < event.width-10 or e.cget('width') > event.width + 10:
+                    print 'resize w'
+                    skip_resize=0
+                    e.config(width=event.width)
+        except Exception as e:
+            print e
+            skip_resize = 0
+        break
+    #'''
+    try:
+        if not init_req_v:
+            init_req_v = page_proxy.winfo_reqheight()
+            for e in expand_v:
+                e.config(height=1)
+            skip_resize=0
+            return
+        if event.height < init_req_v:
+            for e in expand_v:
+                e.config(height=1)
+            skip_resize=0
+            return
+        for e in expand_v:
+            if e.cget('height') < event.height-10 or e.cget('height') > event.height + 10:
+                print 'resize h'
+                skip_resize=0
+                e.config(height=event.height)
+    except Exception as e:
+        print e
+        skip_resize = 0
+    print '---------------------------------------------'
+    
+expand_h=[]
+expand_v=[]
+skip_resize = 0
+init_req_h = 0
+init_req_v = 0
+
 packet = None
 ipLayer = None
 show = None
@@ -1363,6 +1435,16 @@ hidden = True
 root = themed_tk.ThemedTk() #Tk()
 root.set_theme('elegance')
 root.title("Traffic Based Model Generator")
+#resize stuff
+#root.bind("<Configure>", updateResize)
+#top = root.winfo_toplevel()
+#top.rowconfigure(0, weight=1)
+#top.columnconfigure(0, weight=1)
+#root.rowconfigure(0, weight=1)
+#root.columnconfigure(0, weight=1)
+root.resizable(width=False, height=False)
+#resize stuff
+
 SynthMatchBG = "#ddddee"
 SynthDiffBG  = "#ffffcc"
 BTNEditedBG = "#eedddd"
@@ -1370,44 +1452,46 @@ BTNNotEditedBG = None #uses default color
 
 
 
-nb0 = ttk.Notebook(root)
-nb0.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
+nb0 = AutoresizedNotebook(root)
+nb0.grid_rowconfigure(0,weight=1)
+nb0.grid_columnconfigure(0,weight=1)
+nb0.grid(row=0, column=0,sticky='NESW')
 
 page_tbmg = ttk.Frame(nb0)
-nb0.add(page_tbmg, text='TBMG')
+nb0.add(page_tbmg, text='TBMG', sticky='NESW')
 
 page_proxy = ttk.Frame(nb0)
-nb0.add(page_proxy, text='ScapyProxy')
+nb0.add(page_proxy, text='ScapyProxy', sticky='NESW')
 
-nb = ttk.Notebook(page_tbmg)
-nb.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
+nb = AutoresizedNotebookChild(page_tbmg)
+nb.grid(row=0, column=0, columnspan=50, rowspan=49, sticky='NESW')
 
 # Adds tab 1 of the notebook
 page1 = ttk.Frame(nb)
-nb.add(page1, text='Model Generation')
+nb.add(page1, text='Model Generation', sticky='NESW')
 
 # Adds tab 2 of the notebook
 page2 = ttk.Frame(nb)
-nb.add(page2, text='View Model')
+nb.add(page2, text='View Model', sticky='NESW')
 
 page3 = ttk.Frame(nb)
-nb.add(page3, text='Edit Model')
+nb.add(page3, text='Edit Model', sticky='NESW')
 
 page3_5 = ttk.Frame(nb)
-nb.add(page3_5, text='Adv. Field', state=DISABLED)
+nb.add(page3_5, text='Adv. Field', state=DISABLED, sticky='NESW')
 
 page4 = ttk.Frame(nb)
-nb.add(page4, text='Create Dissector')
+nb.add(page4, text='Create Dissector', sticky='NESW')
 
 
-nb2 = ttk.Notebook(page_proxy)
-nb2.grid(row=1, column=0, columnspan=50, rowspan=49, sticky='NESW')
+nb2 = AutoresizedNotebookChild(page_proxy)
+nb2.grid(row=0, column=0, columnspan=50, rowspan=49, sticky='NESW')
 
 page5 = ttk.Frame(nb2)
-nb2.add(page5, text='Scapy Proxy')
+nb2.add(page5, text='Scapy Proxy', sticky='NESW')
 
 page6 = ttk.Frame(nb2)
-nb2.add(page6, text="Fuzzer")
+nb2.add(page6, text="Fuzzer", state=DISABLED, sticky='NESW')
 
 app = Application(root)
 root.mainloop()

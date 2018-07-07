@@ -1,4 +1,6 @@
 from Tkinter import *
+from ttk import Notebook
+
 
 class VerticalScrolledFrame(Frame):
 	#https://gist.github.com/EugeneBakin/76c8f9bcec5b390e45df
@@ -44,3 +46,6 @@ class VerticalScrolledFrame(Frame):
                 # update the inner frame's width to fill the canvas
                 self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
         self.canvas.bind('<Configure>', _configure_canvas)
+
+
+
