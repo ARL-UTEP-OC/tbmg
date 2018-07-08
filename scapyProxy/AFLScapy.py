@@ -21,6 +21,8 @@ class FuzzPacket:
         self.cmd = 'py-afl-fuzz -m 500 -t 20000+ -i ' + self.input_dir + ' -o ' + self.output_dir + ' -- python ' + self.wrapper_name
         self.accept_me = []
         self.status = False
+        self.red = '#e85151'
+        self.green = '#76ef51'
         
     def startScapyFuzz(self):
         layers = []
@@ -125,9 +127,9 @@ class FuzzPacket:
     def populatePacket(self):
         def updateToggleButton(button):
             if button['text'] == 'F':
-                button.configure(text='T')
+                button.configure(text='T', bg=self.green)
             else:
-                button.configure(text='F')
+                button.configure(text='F', bg=self.red)
         self.gui_layers = {}
         rownum = 1
         # $pack.show()
@@ -166,13 +168,13 @@ class FuzzPacket:
                     self.gui_layers[l.name].append((layer, label, entry))
                     rownum += 1
                     continue
-            
+                
                 for f in l.fields:
                     label = Label(self.tbmg.packet_scroll.interior, text=str(f))
                     label.grid(row=rownum, column=1)
                     entry = Entry(self.tbmg.packet_scroll.interior, width=30)
                     entry.grid(row=rownum, column=2)
-                    toggle = Button(self.tbmg.packet_scroll.interior, text='F')
+                    toggle = Button(self.tbmg.packet_scroll.interior, text='F', bg=self.red)
                     toggle.configure(command=lambda button=toggle : updateToggleButton(button))
                     toggle.grid(row=rownum, column=3)
                     try:

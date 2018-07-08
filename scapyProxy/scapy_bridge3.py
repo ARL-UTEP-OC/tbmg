@@ -57,13 +57,13 @@ class ScapyBridge(object):
         
     def loadSettings(self):
         self.proto_colors ={}
-        color_config = open('/root/tbmg/scapyProxy/color_config.csv','r')
+        color_config = open('/root/tbmg/scapyProxy/color_config.csv', 'r')
         for line in color_config.readlines():
             try:
-                proto,color = line.strip().split(',')
+                proto, color = line.strip().split(',')
                 self.proto_colors[proto.strip()] = color.strip()
             except:
-                print 'bad line'
+                print 'bad color config line'
         color_config.close()
     
     #only run in one scapy_bridge instance
@@ -79,16 +79,10 @@ class ScapyBridge(object):
             replaceOutgoing = Button(popup, text='Replace Outgoing',command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack,True))
             replaceOutgoing.grid(row=6, column=6)
             msg = ScrolledText(popup)
-            #scroller = Scrollbar(popup)
-            #scroller.config(command=msg.yview)
-            #msg.config(yscrollcommand=scroller.set)
             msg.grid(row=0,column=0,columnspan=2)
             replaceOutgoing.grid(row=1,column=0)
             replaceIncoming.grid(row=1,column=1)
-            #scroller.pack()
             msg.insert(END, pack_text)
-            #self.tbmg.replaceIncoming.configure(command=lambda pack=pkt: self.tbmg.scapybridgeR._packet_disect_intercept(pack))
-            #self.tbmg.replaceOutgoing.configure(command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack))
         self.pack_view_packs = []
         for button in self.tbmg.pack_view.interior.grid_slaves():
             button.destroy()
@@ -99,10 +93,20 @@ class ScapyBridge(object):
         packets = rdpcap(name)
         for p in packets:
             print (i, p.summary())
-            b = Button(self.tbmg.pack_view.interior, text=p.summary(), width=50, command=lambda j=i: popUP(j))
+            b = Button(self.tbmg.pack_view.interior, text=p.summary(), width=70, command=lambda j=i: popUP(j))
             if p.lastlayer().name in self.proto_colors:
                 b.config(bg=(self.proto_colors[p.lastlayer().name]))
-            #TODO add popup w/ packet details
+            else:
+                print 'counld not color:',p.lastlayer().name
+                temp_pack = p.copy()
+                while 1:
+                    try:
+                        if temp_pack.lastlayer().name in self.proto_colors:
+                            b.config(bg=(self.proto_colors[temp_pack.lastlayer().name]))
+                            break
+                        del(temp_pack[temp_pack.lastlayer().name])
+                    except:
+                        break
             b.grid(row=i, column=0)
             self.pack_view_packs.append(p)
             i = i+1

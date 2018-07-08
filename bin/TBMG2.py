@@ -197,6 +197,7 @@ class Application(Frame):
             else:
                 self.fuzz_packet = FuzzPacket(self.scapybridgeS.current_pack, tbmg_=self)
             self.fuzz_packet.populateFuzzerGUI()
+            nb2.tab(1, state='normal')
         
         def trafficTabHandle(args=None):
             tab_text = self.traffic_tab.tab(self.traffic_tab.select(),"text")
@@ -311,6 +312,9 @@ class Application(Frame):
         self.loadPacksFromPcap = Button(self.pcap_tab, text='Load from PCAP', command=self.scapybridgeS.loadPCAP)
         self.loadPacksFromPcap.grid(row=0, column=0+1, sticky='NEWS')
         self.pack_view = VerticalScrolledFrame(self.pcap_tab, height=30, width=100)
+        self.pack_view_fixwidth = Label(self.pack_view.interior, text='')
+        self.pack_view_fixwidth.configure(width=75)
+        self.pack_view_fixwidth.grid(row=0, column=0)
         self.pack_view.grid(row=1,column=0+1, sticky='NEWS')
         
         self.raw_tab_pcap = Frame(self.view_tab_pcap)
