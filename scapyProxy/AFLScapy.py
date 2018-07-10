@@ -141,6 +141,8 @@ class FuzzPacket:
                 self.gui_layers[l.name] = []
             
                 layer = Label(self.tbmg.packet_scroll.interior, text=l.name)
+                if l.name in self.tbmg.scapybridgeS.proto_colors:
+                    label.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
                 layer.grid(row=rownum, column=0)
                 rownum += 1
                 if l.name == 'Ethernet' or l.name == 'Ether':

@@ -1434,16 +1434,21 @@ def updateResize(event):
 
 
 def on_closing():
-    if os.path.isfile(app.iptables_save):
-        os.system('iptables-restore '+ app.iptables_save)
-        os.remove(app.iptables_save)
     try:
-        app.scapybridgeS.self.display_lock.release()
-        app.scapybridgeR.self.display_lock.release()
+        if os.path.isfile(app.iptables_save):
+            os.system('iptables-restore '+ app.iptables_save)
+            os.remove(app.iptables_save)
+            print 'restored iptables'
+    except:
+        pass
+    try:
+        app.scapybridgeS.display_lock.release()
+        app.scapybridgeR.display_lock.release()
         if app.scapybridgeS.status:
             app.scapybridgeS.proxyToggle()
         if app.scapybridgeR.status:
             app.scapybridgeR.proxyToggle()
+        print 'proxy is:', app.scapybridgeS.status or app.scapybridgeR.status
     except:
         pass
     try:
@@ -1456,9 +1461,11 @@ def on_closing():
     root.destroy()
     for t in threading.enumerate():
         try:
-            t.join(timeout=5)
+            print 'joining thread running:',t.name
+            t.join(timeout=.05)
         except:
             pass
+    print 'donezo'
     sys.exit()
 
 

@@ -340,6 +340,11 @@ class ScapyBridge(object):
                         continue
                     self.gui_layersPCAP[l.name] = []
                     layer = Label(self.tbmg.disectlistP.interior, text=l.name)
+                    if l.name in self.tbmg.scapybridgeS.proto_colors:
+                        print 'found layer color!',self.tbmg.scapybridgeS.proto_colors[l.name]
+                        layer.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
+                    else:
+                        print 'count not color layer:',l.name
                     layer.grid(row=rownum, column=0)
                     rownum += 1
                     if l.name == 'Ethernet' or l.name == 'Ether':
@@ -396,6 +401,11 @@ class ScapyBridge(object):
                     self.gui_layers[l.name] = []
                     
                     layer = Label(self.tbmg.disectlistS.interior, text=l.name)
+                    if l.name in self.tbmg.scapybridgeS.proto_colors:
+                        print 'found layer color!', self.tbmg.scapybridgeS.proto_colors[l.name]
+                        layer.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
+                    else:
+                        print 'count not color layer:', l.name
                     layer.grid(row=rownum, column=0)
                     rownum += 1
                     if l.name == 'Ethernet' or l.name == 'Ether':
@@ -452,6 +462,11 @@ class ScapyBridge(object):
                     self.gui_layers[l.name] = []
             
                     layer = Label(self.tbmg.disectlistR.interior, text=l.name)
+                    if l.name in self.tbmg.scapybridgeS.proto_colors:
+                        print 'found layer color!',self.tbmg.scapybridgeS.proto_colors[l.name]
+                        layer.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
+                    else:
+                        print 'count not color layer:',l.name
                     layer.grid(row=rownum, column=0)
                     rownum += 1
                     if l.name == 'Ethernet' or l.name == 'Ether':
