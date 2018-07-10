@@ -8,6 +8,7 @@ import tkMessageBox
 from jinja2 import Template
 from io import BytesIO
 import ttk
+from PIL import ImageTk
 import time
 import os
 import subprocess
@@ -1407,7 +1408,35 @@ def updateResize(event):
         print e
         skip_resize = 0
     print '---------------------------------------------'
+
+def on_closing():
+    os.system('iptables -F')
+    os.system('iptables -X')
+    try:
+        app.scapybridgeS.self.display_lock.release()
+        app.scapybridgeR.self.display_lock.release()
+        if app.scapybridgeS.status:
+            app.scapybridgeS.proxyToggle()
+        if app.scapybridgeR.status:
+            app.scapybridgeR.proxyToggle()
+    except:
+        pass
+    try:
+        app.scapybridgeS.intercepter.stop()
+        app.scapybridgeR.intercepter.stop()
+        print 'stop interceptors'
+    except Exception as e:
+        print e,'coundt stop interceptors'
     
+    root.destroy()
+    for t in threading.enumerate():
+        try:
+            t.join(timeout=5)
+        except:
+            pass
+    sys.exit()
+
+
 expand_h=[]
 expand_v=[]
 skip_resize = 0
@@ -1439,6 +1468,9 @@ hidden = True
 root = themed_tk.ThemedTk() #Tk()
 root.set_theme('elegance')
 root.title("Traffic Based Model Generator")
+#icon
+imgicon = ImageTk.PhotoImage(file='/root/tbmg/bin/logo.png')
+root.tk.call('wm', 'iconphoto', root._w, imgicon)
 #resize stuff
 #root.bind("<Configure>", updateResize)
 #top = root.winfo_toplevel()
@@ -1448,6 +1480,7 @@ root.title("Traffic Based Model Generator")
 #root.columnconfigure(0, weight=1)
 root.resizable(width=False, height=False)
 #resize stuff
+root.protocol("WM_DELETE_WINDOW", on_closing)
 
 SynthMatchBG = "#ddddee"
 SynthDiffBG  = "#ffffcc"

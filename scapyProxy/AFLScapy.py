@@ -52,7 +52,7 @@ class FuzzPacket:
                 del (to_send['TCP'].chksum)
             except:
                 pass
-            print('sending:',to_send.summary())
+            print('sending:', to_send.summary())
             self.accept_me.append(to_send)
             response = sendp(to_send)#sr1(to_send, timeout=3, verbose=0)
             time.sleep(.1)
@@ -106,7 +106,7 @@ class FuzzPacket:
                     if item[3]['text'] == "T":
                         self.packet_feilds.append((item[0]['text'], item[1]['text']))
                 except:
-                    print ('item:',item)
+                    print ('item:', item)
                     pass
         print ('packet_feilds:', self.packet_feilds)
         p = threading.Thread(target=self.startScapyFuzz)

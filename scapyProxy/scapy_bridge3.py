@@ -6,12 +6,9 @@
 from Tkinter import *
 from scapy.all import *
 import os
-import threading
 from multiprocessing import Pipe
 import time
 from scapyProxy.GuiUtils import VerticalScrolledFrame
-from socket import gaierror
-import chardet
 import interceptor
 from StringIO import StringIO
 import sys
@@ -43,13 +40,14 @@ class ScapyBridge(object):
         self.intercepting = False
         self.gui_layers = {}  # gui_layers['IP'] = [(Label(text=layer),Label(text=feild_name),Entry(text=feild_value)),(L,E),...]
         self.current_pack = None
-        self.intercepter = interceptor.Interceptor()
+        self.intercepter = None #interceptor.Interceptor()
         self.packet_queue = [] #[x] = (prio#, scapy_packet)
         self.display_lock = Lock()
         self.pack_num_counter=1
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
         self.ether_pass = []
+        self.save_stdout = sys.stdout
         self.arp_stop = False
         self.arp_sniff_thread = Thread(target=self.arpSniff)
         self.arp_sniff_thread.setDaemon(True)
@@ -74,6 +72,7 @@ class ScapyBridge(object):
             popup = Toplevel()
             popup.title = pkt.summary()
             pack_text = self._packet_disect_nointercept(pkt)
+            sys.stdout = self.save_stdout
             replaceIncoming = Button(popup, text='Replace Incoming',command=lambda pack=pkt: self.tbmg.scapybridgeR._packet_disect_intercept(pack,True))
             replaceIncoming.grid(row=6, column=5)
             replaceOutgoing = Button(popup, text='Replace Outgoing',command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack,True))
@@ -159,7 +158,7 @@ class ScapyBridge(object):
             if not self.gui_layers or len(self.tbmg.disectlistR.interior.grid_slaves()) < 2:
                 return
         #update packet based on GUI
-        self.current_pack.show2()
+        #self.current_pack.show2()
         for layer in self.gui_layers:
             if layer and layer in self.current_pack:
                 for pair in self.gui_layers[layer]:
@@ -255,8 +254,9 @@ class ScapyBridge(object):
                     except Exception, e:
                         print 'setattr err:',e,'->',"self.current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
         
-        self.current_pack.show()
-        self.current_pack.show2()
+        #self.current_pack.show()
+        #self.current_pack.show2()
+        print 'making raw from disect'
         r = raw(self.current_pack)
         print('producing from disect:', r.encode('hex'))
         if self.status and self.intercepting:
@@ -453,12 +453,17 @@ class ScapyBridge(object):
                     break
     
     def _packet_disect_nointercept(self, pack):
-        capture = StringIO()
-        save_stdout = sys.stdout
-        sys.stdout = capture
-        pack.show()
-        sys.stdout = save_stdout
-        return capture.getvalue()+'\n----------------------------------\n'
+        try:
+            capture = StringIO()
+            sys.stdout = capture
+            pack.show()
+            sys.stdout = self.save_stdout
+            return capture.getvalue()+'\n----------------------------------\n'
+        except:
+            sys.stdout = self.save_stdout
+            return '\n'
+        finally:
+            sys.stdout = self.save_stdout
     
     def interceptToggle(self):
         self.intercepting = not self.intercepting
@@ -532,15 +537,18 @@ class ScapyBridge(object):
             try:
                 print("Adding iptable rules :",self.iptablesr)
                 os.system(self.iptablesr)
-                self.intercepter = interceptor.Interceptor()
                 try:
                     print 'about to start proxy'
                     self.arp_stop = False
+                    self.arp_sniff_thread = Thread(target=self.arpSniff)
+                    self.arp_sniff_thread.setDaemon(True)
                     self.arp_sniff_thread.start()
-                    if self.is_outgoing:
-                        self.intercepter.start(self.callback, queue_ids=range(20))
-                    else:
-                        self.intercepter.start(self.callback, queue_ids=range(20, 40))
+                    if not self.intercepter:
+                        self.intercepter = interceptor.Interceptor()
+                        if self.is_outgoing:
+                            self.intercepter.start(self.callback, queue_ids=range(20))
+                        else:
+                            self.intercepter.start(self.callback, queue_ids=range(20, 40))
                     print ('moving after proxy start')
                 except Exception, e:
                     print 'COUNDT START PROXY',e
@@ -570,7 +578,7 @@ class ScapyBridge(object):
                 os.system('iptables -F')
                 os.system('iptables -X')
                 print 'stoping proxy'
-                self.intercepter.stop()
+                #self.intercepter.stop()
                 
             except Exception, e:
                 print 'proxy err:',e
@@ -807,9 +815,11 @@ class ScapyBridge(object):
                     pass
                 if self.is_outgoing:
                     self.tbmg.disecttextS.insert('3.0', self._packet_disect_nointercept(self.current_pack))
+                    sys.stdout = self.save_stdout
                     self.tbmg.rawtextS.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
                 else:
                     self.tbmg.disecttextR.insert('3.0', self._packet_disect_nointercept(self.current_pack))
+                    sys.stdout = self.save_stdout
                     self.tbmg.rawtextR.insert('0.0', '\n- ' + str(raw(self.current_pack)).encode('hex'))
                 if self.pcapfile:
                     wrpcap(self.pcapfile, self.current_pack, append=True)

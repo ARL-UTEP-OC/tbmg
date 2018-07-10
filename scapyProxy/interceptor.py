@@ -301,38 +301,40 @@ class Interceptor(object):
 				pass  #logger.warning("Verdict callback problem, packet will be dropped: %r", ex)
 
 			set_verdict(queue_handle, packet_id, verdict, len(data_ret), ctypes.c_char_p(data_ret))
-
-		nfq_handle = ll_open_queue()  # 2
-
-		# TODO: what about IPv6?
-		unbind_pf(nfq_handle, socket.AF_INET)
-		bind_pf(nfq_handle, socket.AF_INET)
-
-		c_handler = HANDLER(verdict_callback_ind)
-		queue = create_queue(nfq_handle, queue_id, c_handler, None)  # 1
-
-		set_mode(queue, NFQNL_COPY_PACKET, 0xFFFF)
-
-		nf = nfnlh(nfq_handle)
-		fd = nfq_fd(nf)
-		# fd, family, sockettype
-		nfq_socket = socket.fromfd(fd, 0, 0)  # 3
-		# TODO: better solution to check for running state? close socket and raise exception does not work in stop()
-		nfq_socket.settimeout(1)
-
-		thread = threading.Thread(
-			target=Interceptor.verdict_trigger_cycler,
-			args=[nfq_socket.recv, nfq_handle, self]
-		)
-
-		thread.start()
-
-		qconfig = Interceptor.QueueConfig(
-			queue=queue, queue_id=queue_id, nfq_handle=nfq_handle, nfq_socket=nfq_socket,
-			verdictthread=thread, handler=c_handler
-		)
-		self._netfilterqueue_configs.append(qconfig)
-		self.queues.append([queue_id,queue,nfq_handle,nf,fd,nfq_socket,thread])
+		try:
+			nfq_handle = ll_open_queue()  # 2
+	
+			# TODO: what about IPv6?
+			unbind_pf(nfq_handle, socket.AF_INET)
+			bind_pf(nfq_handle, socket.AF_INET)
+	
+			c_handler = HANDLER(verdict_callback_ind)
+			queue = create_queue(nfq_handle, queue_id, c_handler, None)  # 1
+	
+			set_mode(queue, NFQNL_COPY_PACKET, 0xFFFF)
+	
+			nf = nfnlh(nfq_handle)
+			fd = nfq_fd(nf)
+			# fd, family, sockettype
+			nfq_socket = socket.fromfd(fd, 0, 0)  # 3
+			# TODO: better solution to check for running state? close socket and raise exception does not work in stop()
+			nfq_socket.settimeout(1)
+	
+			thread = threading.Thread(
+				target=Interceptor.verdict_trigger_cycler,
+				args=[nfq_socket.recv, nfq_handle, self]
+			)
+	
+			thread.start()
+	
+			qconfig = Interceptor.QueueConfig(
+				queue=queue, queue_id=queue_id, nfq_handle=nfq_handle, nfq_socket=nfq_socket,
+				verdictthread=thread, handler=c_handler
+			)
+			self._netfilterqueue_configs.append(qconfig)
+			self.queues.append([queue_id,queue,nfq_handle,nf,fd,nfq_socket,thread])
+		except Exception as e:
+			print e,'-> inteptor got error in _setup_queue'
 
 	def start(self, verdict_callback, queue_ids, ctx=None):
 		"""
@@ -354,16 +356,20 @@ class Interceptor(object):
 			self._setup_queue(queue_id, ctx, verdict_callback)
 
 	def stop(self):
-		if not self._is_running:
-			return
-
-		# logger.debug("stopping Interceptor")
-		self._is_running = False
-
-		for qconfig in self._netfilterqueue_configs:
-			destroy_queue(qconfig.queue)
-			close_queue(qconfig.nfq_handle)
-			qconfig.nfq_socket.close()
-			# logger.debug("joining verdict thread for queue %d", qconfig.queue_id)
-			#qconfig.verdictthread.join()
-		self._netfilterqueue_configs.clear()
+		try:
+			if not self._is_running:
+				return
+	
+			# logger.debug("stopping Interceptor")
+			self._is_running = False
+			
+			for qconfig in self._netfilterqueue_configs:
+				destroy_queue(qconfig.queue)
+				close_queue(qconfig.nfq_handle)
+				qconfig.nfq_socket.close()
+				# logger.debug("joining verdict thread for queue %d", qconfig.queue_id)
+				qconfig.verdictthread.join()
+			del self._netfilterqueue_configs[:]
+			#self._netfilterqueue_configs.clear()
+		except Exception as e:
+			print e,'-> inteptor got error in stop'
