@@ -204,7 +204,7 @@ class Application(Frame):
             tab_text = self.traffic_tab.tab(self.traffic_tab.select(),"text")
             print 'traffic tab handle', tab_text
             
-                
+            
         self.red = '#e85151'
         self.green = '#76ef51'
         self.yellow = '#f4e542'
@@ -303,6 +303,20 @@ class Application(Frame):
         self.disectLableS = None
         
         #PCAPs
+        def replacer(is_outgoing):
+            if not self.scapybridgeS.intercepting:
+                tkMessageBox.showinfo('TMBG - Not Intercepting', 'To replace a packet, make sure INTERCEPTING is on.')
+                return
+            if not self.scapybridgeS.current_packPCAP:
+                tkMessageBox.showinfo('TMBG - Not Intercepting', 'To replace a packet, make sure a packet from a PCAP is selected.')
+                return
+            if is_outgoing:
+                self.traffic_tab.select(1)
+                self.scapybridgeS._packet_disect_intercept(self.scapybridgeS.current_packPCAP, True)
+            else:
+                self.traffic_tab.select(0)
+                self.scapybridgeR._packet_disect_intercept(self.scapybridgeS.current_packPCAP, True)
+            
         self.pcap_frame = Frame(self.traffic_tab)
         self.traffic_tab.add(self.pcap_frame, text='PCAP', sticky='NESW')
         self.view_tab_pcap = AutoresizedNotebookChild(self.pcap_frame)
@@ -323,35 +337,42 @@ class Application(Frame):
         self.rawtextP = ScrolledText(self.raw_tab_pcap, height=30, width=60)
         self.rawtextP.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.rawtextP.insert(END, 'RAWVIEW\n---\n')
-        self.rawviewP = Button(self.raw_tab_pcap, text='Send')#, command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewP = Button(self.raw_tab_pcap, text='Send', command=self.scapybridgeS.sendRawUpdate)
         self.rawviewP.grid(row=1, column=0+1, sticky='SEW')
-        self.dropP = Button(self.raw_tab_pcap, text='Drop')  # , command=self.scapybridgeS.sendDrop)
-        self.dropP.grid(row=1, column=1+1, sticky='SEW')
-        self.rawviewPS = Button(self.raw_tab_pcap, text='Replace Outgoing\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
+        self.rawdropP = Button(self.raw_tab_pcap, text='Drop', command=self.scapybridgeS.sendDrop)
+        self.rawdropP.grid(row=1, column=1+1, sticky='SEW')
+        self.rawviewPS = Button(self.raw_tab_pcap, text='Replace Outgoing\n Packet', command=lambda is_outgoing=True:replacer(is_outgoing))
         self.rawviewPS.grid(row=1, column=2+1, sticky='SEW')
-        self.rawviewPR = Button(self.raw_tab_pcap, text='Replace Incoming\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
+        self.rawviewPR = Button(self.raw_tab_pcap, text='Replace Incoming\n Packet', command=lambda is_outgoing=False:replacer(is_outgoing))
         self.rawviewPR.grid(row=1, column=3+1, sticky='SEW')
-        self.sendoutfuzz = Button(self.raw_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=4+1, sticky='SEW')
+        self.rawsendoutfuzz = Button(self.raw_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
+        self.rawsendoutfuzz.grid(row=1, column=4+1, sticky='SEW')
 
         self.disect_tab_pcap = Frame(self.view_tab_pcap)
         self.view_tab_pcap.add(self.disect_tab_pcap, text='Disect', sticky='NESW')
-        self.rawviewP = Button(self.disect_tab_pcap, text='Send')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewP.grid(row=1, column=0+1, sticky='SEW')
-        self.dropP = Button(self.disect_tab_pcap, text='Drop')  # , command=self.scapybridgeS.sendDrop)
-        self.dropP.grid(row=1, column=1+1, sticky='SEW')
-        self.rawviewPS = Button(self.disect_tab_pcap, text='Replace Outgoing\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewPS.grid(row=1, column=2+1, sticky='SEW')
-        self.rawviewPR = Button(self.disect_tab_pcap, text='Replace Incoming\n Packet')  # , command=self.scapybridgeS.sendRawUpdate)
-        self.rawviewPR.grid(row=1, column=3+1, sticky='SEW')
-        self.sendoutfuzz = Button(self.disect_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
-        self.sendoutfuzz.grid(row=1, column=4+1, sticky='SEW')
+        self.disectlistP = VerticalScrolledFrame(self.disect_tab_pcap, height=30, width=50)
+        self.disectlistP.grid(row=0, column=0, columnspan=2)
+        self.disectLableP = Label(self.disectlistP.interior, text='DISECT VIEW\n----\n')
+        self.disectLableP.grid(row=0, column=0)
+        self.disectviewP = Button(self.disect_tab_pcap, text='Send_Disect', command=self.scapybridgeS.sendDisectUpdate)
+        self.disectviewP.grid(row=1, column=0+1, sticky='SEW')
+        self.disectdropP = Button(self.disect_tab_pcap, text='Drop', command=self.scapybridgeS.sendDrop)
+        self.disectdropP.grid(row=1, column=1+1, sticky='SEW')
+        self.disectviewPS = Button(self.disect_tab_pcap, text='Replace Outgoing\n Packet', command=lambda is_outgoing=True:replacer(is_outgoing))
+        self.disectviewPS.grid(row=1, column=2+1, sticky='SEW')
+        self.disectviewPR = Button(self.disect_tab_pcap, text='Replace Incoming\n Packet', command=lambda is_outgoing=False:replacer(is_outgoing))
+        self.disectviewPR.grid(row=1, column=3+1, sticky='SEW')
+        self.disectsendoutfuzz = Button(self.disect_tab_pcap, text='Send to Fuzzer', command=sendFuzzer)
+        self.disectsendoutfuzz.grid(row=1, column=4+1, sticky='SEW')
 
         #############################################################
         #############################################################
         self.page6 = page6
         self.timers = []
         self.updateTimers()
+        #############################################################
+        #############################################################
+        self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
         
     def updateTimers(self):
         now = datetime.datetime.now().strftime("%H:%M:%S.%f")
@@ -1409,9 +1430,11 @@ def updateResize(event):
         skip_resize = 0
     print '---------------------------------------------'
 
+
 def on_closing():
-    os.system('iptables -F')
-    os.system('iptables -X')
+    if os.path.isfile(app.iptables_save):
+        os.system('iptables-restore '+ app.iptables_save)
+        os.remove(app.iptables_save)
     try:
         app.scapybridgeS.self.display_lock.release()
         app.scapybridgeR.self.display_lock.release()
@@ -1529,6 +1552,9 @@ nb2.add(page5, text='Scapy Proxy', sticky='NESW')
 
 page6 = ttk.Frame(nb2)
 nb2.add(page6, text="Fuzzer", state=DISABLED, sticky='NESW')
+
+#page7 = ttk.Frame(nb2)
+#nb2.add(page6, text="Hook", state=DISABLED, sticky='NESW')
 
 app = Application(root)
 root.mainloop()
