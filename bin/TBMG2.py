@@ -195,6 +195,8 @@ class Application(Frame):
             print 'traffic tab handle', tab_text
             if tab_text == 'Incoming':
                 self.fuzz_packet = FuzzPacket(self.scapybridgeR.current_pack, tbmg_=self)
+            elif tab_text == 'PCAP':
+                self.fuzz_packet = FuzzPacket(self.scapybridgeS.current_packPCAP, tbmg_=self)
             else:
                 self.fuzz_packet = FuzzPacket(self.scapybridgeS.current_pack, tbmg_=self)
             self.fuzz_packet.populateFuzzerGUI()
