@@ -101,7 +101,7 @@ class ScapyBridge(object):
             if p.lastlayer().name in self.proto_colors:
                 b.config(bg=(self.proto_colors[p.lastlayer().name]))
             else:
-                print 'counld not color:',p.lastlayer().name
+                #print 'counld not color:',p.lastlayer().name
                 temp_pack = p.copy()
                 while 1:
                     try:
@@ -341,10 +341,11 @@ class ScapyBridge(object):
                     self.gui_layersPCAP[l.name] = []
                     layer = Label(self.tbmg.disectlistP.interior, text=l.name)
                     if l.name in self.tbmg.scapybridgeS.proto_colors:
-                        print 'found layer color!',self.tbmg.scapybridgeS.proto_colors[l.name]
+                        #print 'found layer color!',self.tbmg.scapybridgeS.proto_colors[l.name]
                         layer.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
                     else:
-                        print 'count not color layer:',l.name
+                        pass
+                        #print 'count not color layer:',l.name
                     layer.grid(row=rownum, column=0)
                     rownum += 1
                     if l.name == 'Ethernet' or l.name == 'Ether':
@@ -405,7 +406,8 @@ class ScapyBridge(object):
                         print 'found layer color!', self.tbmg.scapybridgeS.proto_colors[l.name]
                         layer.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
                     else:
-                        print 'count not color layer:', l.name
+                        pass
+                        #print 'count not color layer:', l.name
                     layer.grid(row=rownum, column=0)
                     rownum += 1
                     if l.name == 'Ethernet' or l.name == 'Ether':
@@ -466,7 +468,8 @@ class ScapyBridge(object):
                         print 'found layer color!',self.tbmg.scapybridgeS.proto_colors[l.name]
                         layer.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
                     else:
-                        print 'count not color layer:',l.name
+                        pass
+                        #print 'count not color layer:',l.name
                     layer.grid(row=rownum, column=0)
                     rownum += 1
                     if l.name == 'Ethernet' or l.name == 'Ether':
@@ -719,7 +722,7 @@ class ScapyBridge(object):
                 if packet.lastlayer().name in self.proto_colors:
                     button.config(bg=(self.proto_colors[packet.lastlayer().name]))
                 else:
-                    print 'counld not color:',packet.lastlayer().name
+                    #print 'counld not color:',packet.lastlayer().name
                     temp_pack = packet.copy()
                     while 1:
                         try:
@@ -849,24 +852,28 @@ class ScapyBridge(object):
                     wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
                 print 'sending updated....',raw(self.current_pack)
                 print 'rather than........',data
-                #TODO if eth layer changed, NF_DROP and use scapy to send self.current_pack
+                test_frame.destroy()
+                self.tbmg.timers.remove(timelabel)
+                
+                #if eth layer changed, NF_DROP and use scapy to send self.current_pack
                 if org['Ether'] != self.current_pack['Ether']:
                     if data:
                         self.ether_pass.append(self.current_pack)
                         sendp(self.current_pack)
+                        test_frame.destroy()
                         self.display_lock.release()
                         return raw(self.current_pack), interceptor.NF_DROP
                     elif self.intercepting:
                         sendp(self.current_pack)
+                        self.display_lock.release()
                         return
-                test_frame.destroy()
-                self.tbmg.timers.remove(timelabel)
-                self.display_lock.release()
                 # TODO efficently delte self from packet queue
                 if data:
+                    self.display_lock.release()
                     return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
                 elif self.intercepting:
                     sendp(self.current_pack)
+                    self.display_lock.release()
                     return
             else:
                 print 'not intercpeting..'

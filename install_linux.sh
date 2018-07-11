@@ -7,7 +7,9 @@ if [ -z "$VENV_NAME" ]; then
 fi
 
 apt-get install libnetfilter-queue-dev
+apt-get install python
 apt-get install python-tk
+apt install python-pip
 modprode ip_tables
 #for AFL
 #git clone https://github.com/mirrorer/afl
@@ -24,7 +26,8 @@ virtualenv $VENV_NAME
 source ./$VENV_NAME/bin/activate
 pip install jinja2
 pip install scapy
-pip install chardet
+pip install netifaces
+
 #for AFL
 #pip2 install python-afl
 python -m pip install -U pip setuptools
