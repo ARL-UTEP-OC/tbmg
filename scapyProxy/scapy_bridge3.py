@@ -320,6 +320,7 @@ class ScapyBridge(object):
             self.tbmg.rawtextR.delete(0.0, END)
     
     def _packet_disect_intercept(self, pack, overwrite_current_pack=False):
+        print 'calling _packet_disect_intercept!!!!!!!!!!!'
         if not overwrite_current_pack == 3 and not self.intercepting:
             tkMessageBox.showinfo('TMBG - Not Intercepting', 'To replace a packet, make sure INTERCEPTING is on.')
             return
@@ -333,6 +334,8 @@ class ScapyBridge(object):
             self.gui_layersPCAP = {}
             self.clearRaw()
             self.tbmg.rawtextP.insert('0.0', str(raw(self.current_packPCAP)).encode('hex'))
+            sizelabel = Label(self.tbmg.disectlistP.interior, text='', width=50)
+            sizelabel.grid(row=0, column=0, columnspan=5)
             for i in range(10):
                 try:
                     l = pack.getlayer(i)
@@ -394,6 +397,8 @@ class ScapyBridge(object):
             if overwrite_current_pack:
                 self.clearRaw()
                 self.tbmg.rawtextS.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+            sizelabel = Label(self.tbmg.disectlistS.interior, text='', width=50)
+            sizelabel.grid(row=0, column=0, columnspan=5)
             for i in range(10):
                 try:
                     l = pack.getlayer(i)
@@ -456,6 +461,8 @@ class ScapyBridge(object):
             if overwrite_current_pack:
                 self.clearRaw()
                 self.tbmg.rawtextR.insert('0.0', str(raw(self.current_pack)).encode('hex'))
+            sizelabel = Label(self.tbmg.disectlistR.interior, text='', width=50)
+            sizelabel.grid(row=0, column=0, columnspan=5)
             for i in range(10):
                 try:
                     l = pack.getlayer(i)
@@ -513,6 +520,10 @@ class ScapyBridge(object):
                 except Exception, e:
                     print 'print disect yes intercpet error', e
                     break
+        
+        self.tbmg.root.update()
+        print 'called Tk.update()!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        
     
     def _packet_disect_nointercept(self, pack):
         try:
@@ -538,8 +549,8 @@ class ScapyBridge(object):
                 self.tbmg.disecttextS.grid(row=0, column=0, columnspan=5)
                 self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
             def addintercptGUI():
-                self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.disect_tab_out, height=30, width=50)
-                self.tbmg.disectlistS.grid(row=0, column=0, columnspan=2)
+                self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.disect_tab_out, height=30, width=80)
+                self.tbmg.disectlistS.grid(row=0, column=0, columnspan=3)
                 self.tbmg.disectLableS = Label(self.tbmg.disectlistS.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableS.grid(row=0, column=0)
             
@@ -560,12 +571,12 @@ class ScapyBridge(object):
         else:
             def addnointercptGUI():
                 self.tbmg.disecttextR = ScrolledText(self.tbmg.disect_tab_in, height=30, width=60)
-                self.tbmg.disecttextR.grid(row=0, column=0, columnspan=5)
+                self.tbmg.disecttextR.grid(row=0, column=0, columnspan=3)
                 self.tbmg.disecttextR.insert(END, 'DISECT\n---\n')
     
             def addintercptGUI():
-                self.tbmg.disectlistR = VerticalScrolledFrame(self.tbmg.disect_tab_in, height=30, width=50)
-                self.tbmg.disectlistR.grid(row=0, column=0, columnspan=2)
+                self.tbmg.disectlistR = VerticalScrolledFrame(self.tbmg.disect_tab_in, height=30, width=80)
+                self.tbmg.disectlistR.grid(row=0, column=0, columnspan=3)
                 self.tbmg.disectLableR = Label(self.tbmg.disectlistR.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableR.grid(row=0, column=0)
     

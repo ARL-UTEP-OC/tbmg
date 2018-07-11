@@ -40,6 +40,7 @@ class Application(Frame):
         self.columnconfigure(0, weight=1)
         self.grid(sticky='NESW')
         self.create_widgets()
+        self.root=root
 
     def create_widgets(self):
         self.expand1 = Label(page1, text='')
@@ -169,12 +170,12 @@ class Application(Frame):
             if is_intercepting:
                 # intercpetd queue
                 self.netqueueframeS = VerticalScrolledFrame(self.disect_tab_out, height=100, width=40)
-                self.netqueueframeS.grid(row=0, column=2, columnspan=2)
+                self.netqueueframeS.grid(row=0, column=3, columnspan=2)
                 self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableS.pack()
                 
                 self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
-                self.netqueueframeR.grid(row=0, column=2, columnspan=2)
+                self.netqueueframeR.grid(row=0, column=3, columnspan=2)
                 self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableR.pack()
 
@@ -260,7 +261,7 @@ class Application(Frame):
 
         self.disect_tab_in = Frame(self.view_tab_in)
         self.view_tab_in.add(self.disect_tab_in, text='Disect', sticky='NESW')
-        self.disecttextR = ScrolledText(self.disect_tab_in, height=30, width=60)  # no intercept
+        self.disecttextR = ScrolledText(self.disect_tab_in, height=30, width=0)  # no intercept
         self.disecttextR.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.disecttextR.insert(END, 'DISECT\n---\n')
         self.disectviewR = Button(self.disect_tab_in, text='Accept', command=self.scapybridgeR.sendDisectUpdate)

@@ -26,7 +26,7 @@ class VerticalScrolledFrame(Frame):
         self.canvas.yview_moveto(0)
 
         # create a frame inside the canvas which will be scrolled with it
-        self.interior = interior = Frame(self.canvas, height=50, width=55)
+        self.interior = interior = Frame(self.canvas, height=50, width=120)
         self.interior_id = self.canvas.create_window(0, 0, window=interior,
                                            anchor=NW)
 
