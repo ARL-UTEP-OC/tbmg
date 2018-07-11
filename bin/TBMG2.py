@@ -173,12 +173,17 @@ class Application(Frame):
                 self.netqueueframeS.grid(row=0, column=3, columnspan=2)
                 self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableS.pack()
+                self.interceptsizelabelS = Label(self.disect_tab_out, width=5)
+                self.interceptsizelabelS.grid(row=0,column=6)
                 
                 self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
                 self.netqueueframeR.grid(row=0, column=3, columnspan=2)
                 self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
                 self.netqueueLableR.pack()
-
+                self.interceptsizelabelR = Label(self.disect_tab_in, width=5)
+                self.interceptsizelabelR.grid(row=0, column=6)
+                
+                
             else:
                 try:
                     self.netqueueframeS.destroy()
