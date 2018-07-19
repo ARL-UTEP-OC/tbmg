@@ -27,6 +27,7 @@ source ./$VENV_NAME/bin/activate
 pip install jinja2
 pip install scapy
 pip install netifaces
+pip install pyshark-legacy
 
 #for AFL
 #pip2 install python-afl

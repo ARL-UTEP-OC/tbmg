@@ -93,11 +93,16 @@ class ScapyBridge(object):
             return
         for button in self.tbmg.pack_view.interior.grid_slaves():
             button.destroy()
+        #sizelabel = Label(self.tbmg.pack_view.interior, text='', width=80)
+        #sizelabel.grid(row=0, column=0, columnspan=2)
         i = 0
         packets = rdpcap(name)
         for p in packets:
-            print (i, p.summary())
-            b = Button(self.tbmg.pack_view.interior, text=p.summary(), width=70, command=lambda j=i: popUP(j))
+            summary = p.summary()
+            if len(summary) > 140:
+                summary = summary[:len(summary)/2]+"\n"+summary[len(summary)/2:]
+            #print (i, p.summary())
+            b = Button(self.tbmg.pack_view.interior, text=summary, width=80, command=lambda j=i: popUP(j))
             if p.lastlayer().name in self.proto_colors:
                 b.config(bg=(self.proto_colors[p.lastlayer().name]))
             else:
@@ -524,7 +529,6 @@ class ScapyBridge(object):
         self.tbmg.root.update()
         print 'called Tk.update()!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
         
-    
     def _packet_disect_nointercept(self, pack):
         try:
             capture = StringIO()
@@ -672,13 +676,13 @@ class ScapyBridge(object):
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
             self.skip_to_pack_num = dst_num
             self.parent_conn.send('accept')
-        i_got_lock = False
         try:
             if not self.status:
                 print 'I should not be on...'
                 return data, interceptor.NF_DROP
             num = self.pack_num_counter
             self.pack_num_counter +=1 # may need to make this thread safe
+            #TODO handle protos other than ether and IP T-T eg CookedLinux and maybe IPv6
             if data:
                 packet = Ether(ll_data) / IP(data)
                 org = Ether(ll_data) / IP(data)
@@ -728,7 +732,10 @@ class ScapyBridge(object):
                     test_frame = Frame(self.tbmg.netqueueframeS.interior)
                 else:
                     test_frame = Frame(self.tbmg.netqueueframeR.interior)
-                button = Button(test_frame, text=str(num) + ":" + packet.summary(),
+                summary = packet.summary()
+                if len(summary) > 140:
+                    summary = summary[:140] + "\n" + summary[140:]
+                button = Button(test_frame, text=str(num) + ":" + summary,
                                 width="80", command=lambda: skipAhead(num))
                 if packet.lastlayer().name in self.proto_colors:
                     button.config(bg=(self.proto_colors[packet.lastlayer().name]))
@@ -745,17 +752,66 @@ class ScapyBridge(object):
                             break
                     
                 timelabel = Label(test_frame, text=(datetime.datetime.now().strftime("%H:%M:%S.%f") + '; 0'))
-                button.grid(row=0,column=0)
-                timelabel.grid(row=0,column=1)
+                button.grid(row=0, column=0)
+                timelabel.grid(row=0, column=1)
                 test_frame.pack()
-                
                 self.tbmg.timers.append(timelabel)
-                self.packet_queue.append([1, packet, id, button,timelabel])
+                
+                # TODO check queue gui
+                def checkReorderQueue():
+                    print 'check order...'
+                    numbers = []
+                    queue_gui = self.tbmg.netqueueframeS.interior if self.is_outgoing else self.tbmg.netqueueframeR.interior
+                    for frame in queue_gui.winfo_children():
+                        if not frame.winfo_children():
+                            continue
+                        #print 'frame slaves:',frame,frame.winfo_children()
+                        pack_button = frame.grid_slaves()[0]
+                        #print 'got back button',pack_button
+                        order_number = int(pack_button.cget('text').split(':')[0])
+                        for n in numbers:
+                            if order_number > n:
+                                return True
+                        numbers.append(order_number)
+                    return False
+                
+                def reorderQueue():
+                    print 'REORDERING!!!!!!!!!!'
+                    queue_gui = self.tbmg.netqueueframeS.interior if self.is_outgoing else self.tbmg.netqueueframeR.interior
+                    all_frames = queue_gui.winfo_children()
+                    for item in all_frames:
+                        if not item.winfo_children():
+                            all_frames.remove(item)
+                    ordered_frames = [all_frames[0]]
+                    del (all_frames[0])
+                    queue_gui.pack_forget()
+                    for frame in all_frames:
+                        pack_button = frame.grid_slaves()[0]
+                        a = int(pack_button.cget('text').split(':')[0])
+                        i = 0
+                        added = True
+                        for ordered in ordered_frames:
+                            b = int(ordered.grid_slaves()[0].cget('text').split(':')[0])
+                            added = a < b
+                            if added:
+                                ordered_frames.insert(i, pack_button)
+                                break
+                            i = i+1
+                        if not added:
+                            ordered_frames.append(pack_button)
+                    
+                    for frame in ordered_frames:
+                        frame.pack()
+                if checkReorderQueue():
+                    reorderQueue()
+                
+                
+                
+                #self.packet_queue.append([1, packet, id, button, timelabel])
             
             # lock - one at a time get to render,
             print 'want lock'
             self.display_lock.acquire()
-            i_got_lock = True
             print 'got lock for ',str(num)
             if not self.status:
                 print 'I should not be on...'
@@ -912,8 +968,7 @@ class ScapyBridge(object):
         except Exception as e:
             print 'ERRRRRRRRRR!!!!',e
             try:
-                if i_got_lock:
-                    print 'releasing lock'
-                    self.display_lock.release()
+                print 'releasing lock'
+                self.display_lock.release()
             except:
                 pass

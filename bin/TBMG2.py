@@ -332,7 +332,7 @@ class Application(Frame):
 
         self.pcap_tab = Frame(self.view_tab_pcap)
         self.view_tab_pcap.add(self.pcap_tab, text='Packets', sticky='NESW')
-        self.loadPacksFromPcap = Button(self.pcap_tab, text='Load from PCAP', command=self.scapybridgeS.loadPCAP)
+        self.loadPacksFromPcap = Button(self.pcap_tab, text='Load from PCAP', command=self.scapybridgeS.loadPCAP,width=85)
         self.loadPacksFromPcap.grid(row=0, column=0+1, sticky='NEWS')
         self.pack_view = VerticalScrolledFrame(self.pcap_tab, height=30, width=100)
         self.pack_view_fixwidth = Label(self.pack_view.interior, text='')
@@ -359,7 +359,7 @@ class Application(Frame):
         self.disect_tab_pcap = Frame(self.view_tab_pcap)
         self.view_tab_pcap.add(self.disect_tab_pcap, text='Disect', sticky='NESW')
         self.disectlistP = VerticalScrolledFrame(self.disect_tab_pcap, height=30, width=50)
-        self.disectlistP.grid(row=0, column=0, columnspan=2)
+        self.disectlistP.grid(row=0, column=0, columnspan=6)
         self.disectLableP = Label(self.disectlistP.interior, text='DISECT VIEW\n----\n')
         self.disectLableP.grid(row=0, column=0)
         self.disectviewP = Button(self.disect_tab_pcap, text='Send_Disect', command=self.scapybridgeS.sendDisectUpdate)
