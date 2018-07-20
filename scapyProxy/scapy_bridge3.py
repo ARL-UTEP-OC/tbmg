@@ -46,6 +46,7 @@ class ScapyBridge(object):
         self.intercepter = None #interceptor.Interceptor()
         self.packet_queue = [] #[x] = (prio#, scapy_packet)
         self.display_lock = Lock()
+        self.queue_lock = Lock()
         self.pack_num_counter=1
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
@@ -67,7 +68,7 @@ class ScapyBridge(object):
                 print 'bad color config line'
         color_config.close()
     
-    #only run in one scapy_bridge instance
+    #only run in one scapy_bridge instance (if self.is_outgoing)
     def loadPCAP(self):
         def popUP(i):
             print 'CLICKED PACKET:',str(i)
@@ -546,9 +547,6 @@ class ScapyBridge(object):
         self.intercepting = not self.intercepting
         if self.is_outgoing:
             def addnointercptGUI():
-                #self.tbmg.disecttextS = ScrolledText(self.tbmg.page5, height=30, width=60)
-                #self.tbmg.disecttextS.grid(row=3, column=1)
-                #self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
                 self.tbmg.disecttextS = ScrolledText(self.tbmg.disect_tab_out, height=30, width=60)
                 self.tbmg.disecttextS.grid(row=0, column=0, columnspan=5)
                 self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
@@ -672,8 +670,6 @@ class ScapyBridge(object):
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
-            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
-            print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
             self.skip_to_pack_num = dst_num
             self.parent_conn.send('accept')
         try:
@@ -725,6 +721,7 @@ class ScapyBridge(object):
                         return
             
             # list packet arival
+            self.queue_lock.acquire()
             print("Got a packet " + str(num))  # +":", packet.summary())
             if self.intercepting:
                 id = time.time()  # self.getID()
@@ -754,9 +751,11 @@ class ScapyBridge(object):
                 timelabel = Label(test_frame, text=(datetime.datetime.now().strftime("%H:%M:%S.%f") + '; 0'))
                 button.grid(row=0, column=0)
                 timelabel.grid(row=0, column=1)
+
                 test_frame.pack()
                 self.tbmg.timers.append(timelabel)
-                
+                self.queue_lock.release()
+                '''
                 # TODO check queue gui
                 def checkReorderQueue():
                     print 'check order...'
@@ -765,50 +764,63 @@ class ScapyBridge(object):
                     for frame in queue_gui.winfo_children():
                         if not frame.winfo_children():
                             continue
-                        #print 'frame slaves:',frame,frame.winfo_children()
-                        pack_button = frame.grid_slaves()[0]
-                        #print 'got back button',pack_button
-                        order_number = int(pack_button.cget('text').split(':')[0])
+                        pack_button = frame.grid_slaves()[1]
+                        try:
+                            order_number = int(pack_button.cget('text').split(':')[0])
+                        except:
+                            continue
                         for n in numbers:
-                            if order_number > n:
+                            if order_number < n:
                                 return True
                         numbers.append(order_number)
+                    print 'order is fine....'
                     return False
                 
                 def reorderQueue():
-                    print 'REORDERING!!!!!!!!!!'
+                    print 'REORDERING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
                     queue_gui = self.tbmg.netqueueframeS.interior if self.is_outgoing else self.tbmg.netqueueframeR.interior
                     all_frames = queue_gui.winfo_children()
+                    not_frames = []
                     for item in all_frames:
                         if not item.winfo_children():
-                            all_frames.remove(item)
-                    ordered_frames = [all_frames[0]]
-                    del (all_frames[0])
-                    queue_gui.pack_forget()
+                            not_frames.append(item)
+                    for item in not_frames:
+                        all_frames.remove(item)
+                    print 'got all frames...........................'
+                    ordered_frames = []
+                    #for w in queue_gui.pack_slaves():
+                    #    w.destroy()
+                    #queue_gui.pack_forget()
+                    #queue_gui.grid_forget()
                     for frame in all_frames:
-                        pack_button = frame.grid_slaves()[0]
-                        a = int(pack_button.cget('text').split(':')[0])
+                        try:
+                            pack_button = frame.grid_slaves()[1]
+                            a = int(pack_button.cget('text').split(':')[0])
+                            #print 'testing:',pack_button.cget('text')[:15]
+                        except Exception as e:
+                            print 'BAD FRAME',e #werid frame
                         i = 0
-                        added = True
+                        added = False
                         for ordered in ordered_frames:
-                            b = int(ordered.grid_slaves()[0].cget('text').split(':')[0])
+                            b = int(ordered.grid_slaves()[1].cget('text').split(':')[0])
                             added = a < b
                             if added:
-                                ordered_frames.insert(i, pack_button)
+                                ordered_frames.insert(i, frame)
                                 break
                             i = i+1
                         if not added:
-                            ordered_frames.append(pack_button)
-                    
+                            ordered_frames.append(frame)
+                    for item in ordered_frames:
+                        item.destory()
                     for frame in ordered_frames:
+                        print self.is_outgoing,'ordering::::::::::::::::', frame.grid_slaves()[1].cget('text')[:15]
                         frame.pack()
-                if checkReorderQueue():
-                    reorderQueue()
-                
-                
-                
+                    self.tbmg.root.update()
+                    print '-----------------done order'
+                #if checkReorderQueue():
+                #    reorderQueue()
                 #self.packet_queue.append([1, packet, id, button, timelabel])
-            
+                '''
             # lock - one at a time get to render,
             print 'want lock'
             self.display_lock.acquire()
