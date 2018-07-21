@@ -254,7 +254,7 @@ class Application(Frame):
         
         self.raw_tab_in = Frame(self.view_tab_in)
         self.view_tab_in.add(self.raw_tab_in, text='Raw',sticky='NESW')
-        self.rawtextR = ScrolledText(self.raw_tab_in, height=30, width=60)
+        self.rawtextR = ScrolledText(self.raw_tab_in, height=30, width=90)
         self.rawtextR.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.rawtextR.insert(END, 'RAWVIEW\n---\n')
         self.rawviewR = Button(self.raw_tab_in, text='Accept', command=self.scapybridgeR.sendRawUpdate)
@@ -266,7 +266,7 @@ class Application(Frame):
 
         self.disect_tab_in = Frame(self.view_tab_in)
         self.view_tab_in.add(self.disect_tab_in, text='Disect', sticky='NESW')
-        self.disecttextR = ScrolledText(self.disect_tab_in, height=30, width=0)  # no intercept
+        self.disecttextR = ScrolledText(self.disect_tab_in, height=30, width=90)  # no intercept
         self.disecttextR.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.disecttextR.insert(END, 'DISECT\n---\n')
         self.disectviewR = Button(self.disect_tab_in, text='Accept', command=self.scapybridgeR.sendDisectUpdate)
@@ -286,7 +286,7 @@ class Application(Frame):
         
         self.raw_tab_out = Frame(self.view_tab_out)
         self.view_tab_out.add(self.raw_tab_out, text='Raw', sticky='NESW')
-        self.rawtextS = ScrolledText(self.raw_tab_out, height=30, width=60)
+        self.rawtextS = ScrolledText(self.raw_tab_out, height=30, width=90)
         self.rawtextS.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.rawtextS.insert(END, 'RAWVIEW\n---\n')
         self.rawviewS = Button(self.raw_tab_out, text='Accept', command=self.scapybridgeS.sendRawUpdate)
@@ -298,7 +298,7 @@ class Application(Frame):
 
         self.disect_tab_out = Frame(self.view_tab_out)
         self.view_tab_out.add(self.disect_tab_out, text='Disect', sticky='NESW')
-        self.disecttextS = ScrolledText(self.disect_tab_out, height=30, width=60)
+        self.disecttextS = ScrolledText(self.disect_tab_out, height=30, width=90)
         self.disecttextS.grid(row=0, column=0+1, columnspan=5, sticky='NEWS')
         self.disecttextS.insert(END, 'DISECT\n---\n')
         self.disectviewS = Button(self.disect_tab_out, text='Accept', command=self.scapybridgeS.sendDisectUpdate)
@@ -382,6 +382,15 @@ class Application(Frame):
         #############################################################
         self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
         
+    def restoreIPTables(self):
+        try:
+            if os.path.isfile(self.iptables_save):
+                os.system('iptables-restore ' + self.iptables_save)
+                #os.remove(self.iptables_save)
+                print 'restored iptables'
+        except:
+            pass
+        
     def updateTimers(self):
         now = datetime.datetime.now().strftime("%H:%M:%S.%f")
         now_time = datetime.datetime.strptime(now, '%H:%M:%S.%f')
@@ -390,11 +399,11 @@ class Application(Frame):
             old_time = datetime.datetime.strptime(old, '%H:%M:%S.%f')
             secs = (now_time-old_time).seconds
             timer.config(text=(old + '; ' + str(secs)))
-            if secs>30:
+            if secs > 30:
                 timer.config(bg=self.red)
-            elif secs >15:
+            elif secs >= 15:
                 timer.config(bg=self.yellow)
-        root.after(5000, self.updateTimers)
+        root.after(3000, self.updateTimers)
             
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
 		if self.transport != None:
@@ -1440,13 +1449,7 @@ def updateResize(event):
 
 
 def on_closing():
-    try:
-        if os.path.isfile(app.iptables_save):
-            os.system('iptables-restore '+ app.iptables_save)
-            os.remove(app.iptables_save)
-            print 'restored iptables'
-    except:
-        pass
+    app.restoreIPTables()
     try:
         app.scapybridgeS.display_lock.release()
         app.scapybridgeR.display_lock.release()

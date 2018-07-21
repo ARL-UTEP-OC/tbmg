@@ -550,27 +550,21 @@ class ScapyBridge(object):
                 self.tbmg.disecttextS = ScrolledText(self.tbmg.disect_tab_out, height=30, width=60)
                 self.tbmg.disecttextS.grid(row=0, column=0, columnspan=5)
                 self.tbmg.disecttextS.insert(END, 'DISECT\n---\n')
+                
             def addintercptGUI():
                 self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.disect_tab_out, height=30, width=80)
                 self.tbmg.disectlistS.grid(row=0, column=0, columnspan=3)
                 self.tbmg.disectLableS = Label(self.tbmg.disectlistS.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableS.grid(row=0, column=0)
+
             
-            if self.intercepting:
-                if self.tbmg.disecttextS:
-                    self.tbmg.disecttextS.destroy()
-                    self.tbmg.disecttextS = None
-                if not (self.tbmg.disectlistS and self.tbmg.disectLableS):
-                    addintercptGUI()
-            else:
-                if self.tbmg.disectlistS or self.tbmg.disectLableS:
-                    self.tbmg.disectlistS.destroy()
-                    self.tbmg.disectlistS = None
-                    self.tbmg.disectLableS.destroy()
-                    self.tbmg.disectLableS = None
-                if not self.tbmg.disecttextS:
-                    addnointercptGUI()
+            for item in self.tbmg.disect_tab_out.winfo_children():
+                if not isinstance(item, Button):
+                    item.destroy()
+                
         else:
+            #called first
+            self.tbmg.restoreIPTables()
             def addnointercptGUI():
                 self.tbmg.disecttextR = ScrolledText(self.tbmg.disect_tab_in, height=30, width=60)
                 self.tbmg.disecttextR.grid(row=0, column=0, columnspan=3)
@@ -582,38 +576,49 @@ class ScapyBridge(object):
                 self.tbmg.disectLableR = Label(self.tbmg.disectlistR.interior, text='DISECT VIEW\n----\n')
                 self.tbmg.disectLableR.grid(row=0, column=0)
     
-            if self.intercepting:
-                if self.tbmg.disecttextR:
-                    self.tbmg.disecttextR.destroy()
-                    self.tbmg.disecttextR = None
-                if not (self.tbmg.disectlistR and self.tbmg.disectLableR):
-                    addintercptGUI()
-            else:
-                if self.tbmg.disectlistR or self.tbmg.disectLableR:
-                    self.tbmg.disectlistR.destroy()
-                    self.tbmg.disectlistR = None
-                    self.tbmg.disectLableR.destroy()
-                    self.tbmg.disectLableR = None
-                if not self.tbmg.disecttextR:
-                    addnointercptGUI()
-        print 'intercpet is now', self.intercepting
+            for item in self.tbmg.disect_tab_in.winfo_children():
+                if not isinstance(item, Button):
+                    item.destroy()
+                
+        if self.intercepting:
+            addintercptGUI()
+        else:
+            addnointercptGUI()
+        
+        print 'intercpet is:', (self.intercepting)
         if not self.intercepting:
+            print self.is_outgoing, 'locked?:', self.display_lock.locked()
+            self.skip_to_pack_num = sys.maxint - 1
             self.parent_conn.send('accept')
+            while self.display_lock.locked():
+                print 'waiting...'
+                #self.display_lock.release()
+                time.sleep(.1)
+            time.sleep(.3)
+            while self.child_conn.poll():
+                print 'eating extra...'
+                self.child_conn.recv()
+            self.skip_to_pack_num = 0
             self.clearRaw()
             try:
                 self.clearDisect()
             except:
                 pass
+        self.setIPTables()
+        print 'done toggling.....'
     
+    def setIPTables(self):
+        print("Adding iptable rules :", self.iptablesr)
+        if not os.path.isfile(self.tbmg.iptables_save):
+            os.system('iptables-save > ' + self.tbmg.iptables_save)
+        os.system(self.iptablesr)
+        
     def proxyToggle(self):
         #print(not self.status)
         self.status = not self.status
         if self.status:
             try:
-                print("Adding iptable rules :",self.iptablesr)
-                if not os.path.isfile(self.tbmg.iptables_save):
-                    os.system('iptables-save > '+self.tbmg.iptables_save)
-                os.system(self.iptablesr)
+                self.setIPTables()
                 try:
                     print 'about to start proxy'
                     self.arp_stop = False
@@ -644,7 +649,7 @@ class ScapyBridge(object):
                 print 'mass accept packs'
                 #clean gui/packs
                 if self.intercepting:
-                    for i in range(40):
+                    while self.display_lock.locked():#TODO add timeout
                         self.parent_conn.send('accept')
                     time.sleep(.3)
                     while self.child_conn.poll():
@@ -652,10 +657,11 @@ class ScapyBridge(object):
                     self.clearRaw()
                     self.clearDisect()
                 #stop proxy
-                print('flushing...')
-                os.system('iptables -F')
-                os.system('iptables -X')
-                print 'stoping proxy'
+                print('restoring...')
+                self.tbmg.restoreIPTables()
+                #os.system('iptables -F')
+                #os.system('iptables -X')
+                #print 'stoping proxy'
                 #self.intercepter.stop()
                 
             except Exception, e:
@@ -731,7 +737,7 @@ class ScapyBridge(object):
                     test_frame = Frame(self.tbmg.netqueueframeR.interior)
                 summary = packet.summary()
                 if len(summary) > 140:
-                    summary = summary[:140] + "\n" + summary[140:]
+                    summary = summary[:len(summary)/2] + "\n" + summary[len(summary)/2:]
                 button = Button(test_frame, text=str(num) + ":" + summary,
                                 width="80", command=lambda: skipAhead(num))
                 if packet.lastlayer().name in self.proto_colors:
@@ -754,8 +760,8 @@ class ScapyBridge(object):
 
                 test_frame.pack()
                 self.tbmg.timers.append(timelabel)
-                self.queue_lock.release()
-                '''
+            self.queue_lock.release()
+            '''
                 # TODO check queue gui
                 def checkReorderQueue():
                     print 'check order...'
@@ -820,8 +826,10 @@ class ScapyBridge(object):
                 #if checkReorderQueue():
                 #    reorderQueue()
                 #self.packet_queue.append([1, packet, id, button, timelabel])
-                '''
+            '''
+            
             # lock - one at a time get to render,
+            was_intercepting = self.intercepting
             print 'want lock'
             self.display_lock.acquire()
             print 'got lock for ',str(num)
@@ -841,7 +849,8 @@ class ScapyBridge(object):
             #if self.skip_to_pack_num:
             if num < self.skip_to_pack_num:
                 print 'skipping! im at', str(num)
-                test_frame.destroy()
+                if not (was_intercepting and not self.intercepting):
+                    test_frame.destroy()
                 self.tbmg.timers.remove(timelabel)
                 self.display_lock.release()
                 if data:
@@ -882,22 +891,31 @@ class ScapyBridge(object):
                 recv = self.child_conn.recv()
                 if recv == 'drop':
                     print 'DROPING'
-                    self.display_lock.release()
-                    test_frame.destroy()
                     self.tbmg.timers.remove(timelabel)
+                    test_frame.destroy()
+                    self.display_lock.release()
                     #TODO efficently delte self from packet queue
                     if data:
                         return data, interceptor.NF_DROP
                 elif recv == 'accept':
-                    print "ACCEPTING",str(num)
+                    print "ACCEPTING", str(num)
+                    print 'here it goes.....'
                     try:
-                        self.clearDisect()
+                        self.tbmg.timers.remove(timelabel)
                     except:
+                        print 'could not remove timelabel'
                         pass
-                    self.clearRaw()
+                    print 'here it goes again...'
+                    #try:
+                    #self.clearDisect()
+                    #test_frame.destroy()
+                    #self.clearRaw()
+                    #except:
+                    #    print 'troubling clearings stuff up'
+                    #    pass
+                    print 'accept release'
                     self.display_lock.release()
-                    test_frame.destroy()
-                    self.tbmg.timers.remove(timelabel)
+                    print 'released'
                     if data:
                         return data, interceptor.NF_ACCEPT
                     elif self.intercepting:

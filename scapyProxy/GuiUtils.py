@@ -17,7 +17,7 @@ class VerticalScrolledFrame(Frame):
         self.vscrollbar = Scrollbar(self, orient=VERTICAL)
         self.vscrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
         self.canvas = Canvas(self, bd=0, highlightthickness=0, height=400,width=700,
-                        yscrollcommand=self.vscrollbar.set)
+                        yscrollcommand=self.vscrollbar.set, scrollregion=(0,0,400,700))
         self.canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
         self.vscrollbar.config(command=self.canvas.yview)
 
@@ -26,9 +26,8 @@ class VerticalScrolledFrame(Frame):
         self.canvas.yview_moveto(0)
 
         # create a frame inside the canvas which will be scrolled with it
-        self.interior = interior = Frame(self.canvas, height=50, width=120)
-        self.interior_id = self.canvas.create_window(0, 0, window=interior,
-                                           anchor=NW)
+        self.interior = Frame(self.canvas, height=50, width=120)
+        self.interior_id = self.canvas.create_window(0, 0, window=self.interior, anchor=NW)
 
         # track changes to the canvas and frame width and sync them,
         # also updating the scrollbar
@@ -38,7 +37,7 @@ class VerticalScrolledFrame(Frame):
             self.canvas.config(scrollregion="0 0 %s %s" % size)
             if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
                 # update the canvas's width to fit the inner frame
-                self.canvas.config(width=interior.winfo_reqwidth())
+                self.canvas.config(width=self.interior.winfo_reqwidth())
         self.interior.bind('<Configure>', _configure_interior)
 
         def _configure_canvas(event):

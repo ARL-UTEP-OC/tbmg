@@ -3226,3 +3226,5 @@ tbmg-container/lib/python3\.5/weakref\.py
 tbmg-container/pip-selfcheck\.json
 
 tbmg-container/share/man/man1/scapy\.1\.gz
+
+bin/iptables_save\.txt
