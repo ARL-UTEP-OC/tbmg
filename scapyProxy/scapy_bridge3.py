@@ -37,6 +37,7 @@ class ScapyBridge(object):
         self.tbmg = tbmg_
         self.q = None
         self.status = False
+        self.cleanup = False
         self.filter = None
         self.parent_conn, self.child_conn = Pipe()
         self.pcapfile = ''
@@ -308,8 +309,8 @@ class ScapyBridge(object):
     
     def clearDisect(self):
         if self.is_outgoing:
-            is_pcap_tab = self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(),'text') == 'PCAP'
-            if is_pcap_tab:
+            in_pcap_tab = self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(),'text') == 'PCAP'
+            if in_pcap_tab:
                 for w in self.tbmg.disectlistP.interior.winfo_children():
                     w.destroy()
                 return
@@ -318,7 +319,19 @@ class ScapyBridge(object):
         else:
             for w in self.tbmg.disectlistR.interior.winfo_children():
                 w.destroy()
-
+                
+    def clearQueue(self):
+        try:
+            if self.is_outgoing:
+                for w in self.tbmg.netqueueframeS.interior.winfo_children():
+                    w.destroy()
+            else:
+                for w in self.tbmg.netqueueframeR.interior.winfo_children():
+                    w.destroy()
+        except:
+            pass
+        print 'done clearing queue :D'
+     
     def clearRaw(self):
         if self.is_outgoing:
             if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
@@ -416,7 +429,7 @@ class ScapyBridge(object):
                     
                     layer = Label(self.tbmg.disectlistS.interior, text=l.name)
                     if l.name in self.tbmg.scapybridgeS.proto_colors:
-                        print 'found layer color!', self.tbmg.scapybridgeS.proto_colors[l.name]
+                        #print 'found layer color!', self.tbmg.scapybridgeS.proto_colors[l.name]
                         layer.config(bg=self.tbmg.scapybridgeS.proto_colors[l.name])
                     else:
                         pass
@@ -606,12 +619,13 @@ class ScapyBridge(object):
                 self.clearDisect()
             except:
                 pass
-            if self.is_outgoing:
-                self.tbmg.scapybridgeR.setIPTables()
-                self.setIPTables()
-                print 're-proxying table!'
         else:
             self.clearRaw()
+        if self.is_outgoing:
+            #called last
+            self.tbmg.scapybridgeR.setIPTables()
+            self.tbmg.scapybridgeS.setIPTables()
+            print 're-proxying table!'
         print 'done toggling.....'
 
     def setIPTables(self):
@@ -621,6 +635,7 @@ class ScapyBridge(object):
     def proxyToggle(self):
         #print(not self.status)
         self.status = not self.status
+        self.cleanup = False
         if self.status:
             try:
                 self.setIPTables()
@@ -638,12 +653,12 @@ class ScapyBridge(object):
                             self.intercepter.start(self.callback, queue_ids=range(20, 40))
                     print ('moving after proxy start')
                 except Exception, e:
-                    print 'COUNDT START PROXY',e
+                    print 'COUNDT START PROXY', e
                     print("Restoring iptables.")
                     # This flushes everything, you might wanna be careful
                     # may want a way to restore tables after
                     if os.path.isfile(self.tbmg.iptables_save):
-                        os.system('iptables-restore '+ self.tbmg.iptables_save)
+                        os.system('iptables-restore ' + self.tbmg.iptables_save)
                         os.remove(self.tbmg.iptables_save)
             except Exception, e:
                 print 'start proxy err', e
@@ -670,6 +685,7 @@ class ScapyBridge(object):
                     self.skip_to_pack_num = 0
                     self.clearRaw()
                     self.clearDisect()
+                    self.clearQueue()
                 #os.system('iptables -F')
                 #os.system('iptables -X')
                 #print 'stoping proxy'
@@ -678,6 +694,7 @@ class ScapyBridge(object):
             except Exception, e:
                 print 'proxy err:',e
                 pass
+            self.cleanup='Ready'
 
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
@@ -740,17 +757,19 @@ class ScapyBridge(object):
             # list packet arival
             self.queue_lock.acquire()
             print("Got a packet " + str(num))  # +":", packet.summary())
+            test_frame = None
+            button = None
+            timelabel = None
             if self.intercepting:
                 id = time.time()  # self.getID()
-                if self.is_outgoing:
-                    test_frame = Frame(self.tbmg.netqueueframeS.interior)
-                else:
-                    test_frame = Frame(self.tbmg.netqueueframeR.interior)
+                parent = self.tbmg.netqueueframeS if self.is_outgoing else self.tbmg.netqueueframeR
+                test_frame = Frame(parent.interior)
                 summary = packet.summary()
                 if len(summary) > 140:
                     summary = summary[:len(summary)/2] + "\n" + summary[len(summary)/2:]
                 button = Button(test_frame, text=str(num) + ":" + summary,
-                                width="80", command=lambda: skipAhead(num))
+                                width="80", command=lambda: skipAhead(num))#,yscrollcommand=parent.vscrollbar.set)
+                #handle proto color TODO, put in method packetToColor(packet)
                 if packet.lastlayer().name in self.proto_colors:
                     button.config(bg=(self.proto_colors[packet.lastlayer().name]))
                 else:
@@ -845,9 +864,12 @@ class ScapyBridge(object):
             self.display_lock.acquire()
             print 'got lock for ',str(num)
             if not self.status:
-                print 'I should not be on...',num
+                print 'I should not be on...', num
                 try:
-                    self.tbmg.timers.remove(timelabel)
+                    if timelabel:
+                        self.tbmg.timers.remove(timelabel)
+                        if self.cleanup:
+                            self.clearQueue()
                 except Exception as e:
                     print e
                 self.display_lock.release()
@@ -859,7 +881,7 @@ class ScapyBridge(object):
             #if self.skip_to_pack_num:
             if num < self.skip_to_pack_num:
                 print 'skipping! im at', str(num)
-                if not (was_intercepting and not self.intercepting):
+                if not (was_intercepting and not self.intercepting) and test_frame:
                     test_frame.destroy()
                 self.tbmg.timers.remove(timelabel)
                 self.display_lock.release()
@@ -897,15 +919,15 @@ class ScapyBridge(object):
                     self.tbmg.rawtextR.insert('0.0', str(raw(self.current_pack)).encode('hex'))
                 
                 #recive data from GUI
-                
+                #recive data from GUI
                 recv = self.child_conn.recv()
-                print 'parent called me:',num,recv
+                print 'parent called me:', num, recv
                 if recv == 'drop':
                     print 'DROPING'
                     self.tbmg.timers.remove(timelabel)
                     test_frame.destroy()
                     self.display_lock.release()
-                    #TODO efficently delte self from packet queue
+                    #TODO efficently delete self from packet queue
                     if data:
                         return data, interceptor.NF_DROP
                 elif recv == 'accept':
@@ -918,7 +940,7 @@ class ScapyBridge(object):
                     #try:
                     #self.clearDisect()
                     print 'removed timer...'
-                    if not(was_intercepting and not self.intercepting):
+                    if not(was_intercepting and not self.intercepting) and self.status:
                         print 'destorying frame'
                         test_frame.destroy()
                     #self.clearRaw()

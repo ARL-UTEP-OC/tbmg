@@ -153,7 +153,7 @@ class Application(Frame):
             self.scapybridgeR.interceptToggle()
             self.scapybridgeS.interceptToggle()
             extraInterceptedGUI(self.scapybridgeS.intercepting)
-            time.sleep(1)
+            time.sleep(.1)
             root_widgit.update_idletasks()
             root_widgit.configure(height=root_tab.winfo_reqheight())
             root_widgit.configure(width=root_tab.winfo_reqwidth())
@@ -394,7 +394,6 @@ class Application(Frame):
         #############################################################
         self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
         
-        
     def restoreIPTables(self):
         try:
             if os.path.isfile(self.iptables_save):
@@ -402,6 +401,7 @@ class Application(Frame):
                 #os.remove(self.iptables_save)
                 print 'restored iptables'
         except:
+            print 'TROUBLE RESTORING IPTABLES************************'
             pass
         
     def updateTimers(self):
