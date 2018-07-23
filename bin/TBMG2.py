@@ -135,8 +135,16 @@ class Application(Frame):
         self.scapybridgeR = ScapyBridge(self, False)
         
         def toggleProxyBoth():
+            if not self.scapybridgeR.status:
+                print 'saving iptables'
+                os.system('iptables-save > ' + self.iptables_save)
             self.scapybridgeR.proxyToggle()
             self.scapybridgeS.proxyToggle()
+            if not self.scapybridgeR.status:
+                print 'proxy is turned off'
+                self.restoreIPTables()
+            else:
+                print 'proxy is turned on'
             self.startproxy.config(bg=self.red)
             if self.scapybridgeR.status:
                 self.startproxy.config(bg=self.green)
@@ -145,6 +153,10 @@ class Application(Frame):
             self.scapybridgeR.interceptToggle()
             self.scapybridgeS.interceptToggle()
             extraInterceptedGUI(self.scapybridgeS.intercepting)
+            time.sleep(1)
+            root_widgit.update_idletasks()
+            root_widgit.configure(height=root_tab.winfo_reqheight())
+            root_widgit.configure(width=root_tab.winfo_reqwidth())
             self.intercept.config(bg=self.red)
             if self.scapybridgeS.intercepting:
                 self.intercept.config(bg=self.green)
@@ -171,14 +183,14 @@ class Application(Frame):
                 # intercpetd queue
                 self.netqueueframeS = VerticalScrolledFrame(self.disect_tab_out, height=100, width=40)
                 self.netqueueframeS.grid(row=0, column=3, columnspan=2)
-                self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n')
+                self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n', width='95')
                 self.netqueueLableS.pack()
                 self.interceptsizelabelS = Label(self.disect_tab_out, width=5)
                 self.interceptsizelabelS.grid(row=0,column=6)
                 
                 self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
                 self.netqueueframeR.grid(row=0, column=3, columnspan=2)
-                self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n')
+                self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n', width='95')
                 self.netqueueLableR.pack()
                 self.interceptsizelabelR = Label(self.disect_tab_in, width=5)
                 self.interceptsizelabelR.grid(row=0, column=6)
@@ -381,6 +393,7 @@ class Application(Frame):
         #############################################################
         #############################################################
         self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
+        
         
     def restoreIPTables(self):
         try:
@@ -1361,8 +1374,11 @@ def FlagActualSend(onoff):
 	else:
 		os.remove(fname)
 
+##############################################
 root_widgit=None
 root_tab=None
+
+
 # http://code.activestate.com/recipes/580726-tkinter-notebook-that-fits-to-the-height-of-every-/
 class AutoresizedNotebook(ttk.Notebook):
     
@@ -1393,6 +1409,7 @@ class AutoresizedNotebookChild(ttk.Notebook):
         event.widget.update_idletasks()
         root_widgit.configure(height=root_tab.winfo_reqheight())
         root_widgit.configure(width=root_tab.winfo_reqwidth())
+
 
 def updateResize(event):
     global skip_resize
@@ -1451,12 +1468,13 @@ def updateResize(event):
 def on_closing():
     app.restoreIPTables()
     try:
-        app.scapybridgeS.display_lock.release()
-        app.scapybridgeR.display_lock.release()
         if app.scapybridgeS.status:
             app.scapybridgeS.proxyToggle()
         if app.scapybridgeR.status:
             app.scapybridgeR.proxyToggle()
+        app.scapybridgeS.display_lock.release()
+        app.scapybridgeR.display_lock.release()
+        app.scapybridgeR.display_lock.release()
         print 'proxy is:', app.scapybridgeS.status or app.scapybridgeR.status
     except:
         pass
@@ -1465,12 +1483,11 @@ def on_closing():
         app.scapybridgeR.intercepter.stop()
         print 'stop interceptors'
     except Exception as e:
-        print e,'coundt stop interceptors'
-    
+        print e, 'coundt stop interceptors'
     root.destroy()
     for t in threading.enumerate():
         try:
-            print 'joining thread running:',t.name
+            print 'joining thread running:', t.name
             t.join(timeout=.05)
         except:
             pass

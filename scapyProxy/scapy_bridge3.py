@@ -47,6 +47,7 @@ class ScapyBridge(object):
         self.packet_queue = [] #[x] = (prio#, scapy_packet)
         self.display_lock = Lock()
         self.queue_lock = Lock()
+        self.nointerceptLock = Lock()
         self.pack_num_counter=1
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
@@ -135,7 +136,7 @@ class ScapyBridge(object):
     
     def arpSniff(self):
         #TODO seperate in/out arps
-        a = sniff(prn=self.arpHelper, filter='arp',stop_filter=lambda x:self.arp_stop==True)
+        a = sniff(prn=self.arpHelper, filter='arp',stop_filter=lambda x: self.arp_stop is True)
         print('stopped apr sniff')
     
     def sendDrop(self):
@@ -307,16 +308,17 @@ class ScapyBridge(object):
     
     def clearDisect(self):
         if self.is_outgoing:
-            if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(),'text') == 'PCAP':
-                for w in self.tbmg.disectlistP.interior.grid_slaves():
+            is_pcap_tab = self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(),'text') == 'PCAP'
+            if is_pcap_tab:
+                for w in self.tbmg.disectlistP.interior.winfo_children():
                     w.destroy()
                 return
-            for w in self.tbmg.disectlistS.interior.grid_slaves():
+            for w in self.tbmg.disectlistS.interior.winfo_children():
                 w.destroy()
         else:
-            for w in self.tbmg.disectlistR.interior.grid_slaves():
+            for w in self.tbmg.disectlistR.interior.winfo_children():
                 w.destroy()
-    
+
     def clearRaw(self):
         if self.is_outgoing:
             if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
@@ -531,17 +533,18 @@ class ScapyBridge(object):
         print 'called Tk.update()!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
         
     def _packet_disect_nointercept(self, pack):
+        self.nointerceptLock.acquire()
         try:
             capture = StringIO()
             sys.stdout = capture
             pack.show()
             sys.stdout = self.save_stdout
+            self.nointerceptLock.release()
             return capture.getvalue()+'\n----------------------------------\n'
         except:
             sys.stdout = self.save_stdout
+            self.nointerceptLock.release()
             return '\n'
-        finally:
-            sys.stdout = self.save_stdout
     
     def interceptToggle(self):
         self.intercepting = not self.intercepting
@@ -554,10 +557,9 @@ class ScapyBridge(object):
             def addintercptGUI():
                 self.tbmg.disectlistS = VerticalScrolledFrame(self.tbmg.disect_tab_out, height=30, width=80)
                 self.tbmg.disectlistS.grid(row=0, column=0, columnspan=3)
-                self.tbmg.disectLableS = Label(self.tbmg.disectlistS.interior, text='DISECT VIEW\n----\n')
+                self.tbmg.disectLableS = Label(self.tbmg.disectlistS.interior, text='DISECT VIEW\n----\n', width='50')
                 self.tbmg.disectLableS.grid(row=0, column=0)
 
-            
             for item in self.tbmg.disect_tab_out.winfo_children():
                 if not isinstance(item, Button):
                     item.destroy()
@@ -573,7 +575,7 @@ class ScapyBridge(object):
             def addintercptGUI():
                 self.tbmg.disectlistR = VerticalScrolledFrame(self.tbmg.disect_tab_in, height=30, width=80)
                 self.tbmg.disectlistR.grid(row=0, column=0, columnspan=3)
-                self.tbmg.disectLableR = Label(self.tbmg.disectlistR.interior, text='DISECT VIEW\n----\n')
+                self.tbmg.disectLableR = Label(self.tbmg.disectlistR.interior, text='DISECT VIEW\n----\n', width='50')
                 self.tbmg.disectLableR.grid(row=0, column=0)
     
             for item in self.tbmg.disect_tab_in.winfo_children():
@@ -593,7 +595,7 @@ class ScapyBridge(object):
             while self.display_lock.locked():
                 print 'waiting...'
                 #self.display_lock.release()
-                time.sleep(.1)
+                time.sleep(.025)
             time.sleep(.3)
             while self.child_conn.poll():
                 print 'eating extra...'
@@ -604,13 +606,16 @@ class ScapyBridge(object):
                 self.clearDisect()
             except:
                 pass
-        self.setIPTables()
+            if self.is_outgoing:
+                self.tbmg.scapybridgeR.setIPTables()
+                self.setIPTables()
+                print 're-proxying table!'
+        else:
+            self.clearRaw()
         print 'done toggling.....'
-    
+
     def setIPTables(self):
         print("Adding iptable rules :", self.iptablesr)
-        if not os.path.isfile(self.tbmg.iptables_save):
-            os.system('iptables-save > ' + self.tbmg.iptables_save)
         os.system(self.iptablesr)
         
     def proxyToggle(self):
@@ -649,16 +654,22 @@ class ScapyBridge(object):
                 print 'mass accept packs'
                 #clean gui/packs
                 if self.intercepting:
-                    while self.display_lock.locked():#TODO add timeout
+                    self.skip_to_pack_num = sys.maxint - 1
+                    #self.parent_conn.send('accept')
+                    
+                    while self.display_lock.locked():
                         self.parent_conn.send('accept')
+                        print 'waiting...'
+                        # self.display_lock.release()
+                        time.sleep(.025)
+                        
                     time.sleep(.3)
                     while self.child_conn.poll():
+                        print 'eating extra...'
                         self.child_conn.recv()
+                    self.skip_to_pack_num = 0
                     self.clearRaw()
                     self.clearDisect()
-                #stop proxy
-                print('restoring...')
-                self.tbmg.restoreIPTables()
                 #os.system('iptables -F')
                 #os.system('iptables -X')
                 #print 'stoping proxy'
@@ -681,7 +692,7 @@ class ScapyBridge(object):
         try:
             if not self.status:
                 print 'I should not be on...'
-                return data, interceptor.NF_DROP
+                return data, interceptor.NF_ACCEPT
             num = self.pack_num_counter
             self.pack_num_counter +=1 # may need to make this thread safe
             #TODO handle protos other than ether and IP T-T eg CookedLinux and maybe IPv6
@@ -695,7 +706,7 @@ class ScapyBridge(object):
             #skip what I send
             if packet in self.ether_pass:#arp should not catch here...
                 print 'FOUND SENT ETH CHANGE PACKET - ACCEPTING'
-                packet.show()
+                #packet.show()
                 self.ether_pass.remove(packet)
                 return data, interceptor.NF_ACCEPT
             if self.is_outgoing:
@@ -834,12 +845,11 @@ class ScapyBridge(object):
             self.display_lock.acquire()
             print 'got lock for ',str(num)
             if not self.status:
-                print 'I should not be on...'
+                print 'I should not be on...',num
                 try:
-                    test_frame.destroy()
                     self.tbmg.timers.remove(timelabel)
-                except:
-                    pass
+                except Exception as e:
+                    print e
                 self.display_lock.release()
                 if data:
                     return data, interceptor.NF_ACCEPT
@@ -889,6 +899,7 @@ class ScapyBridge(object):
                 #recive data from GUI
                 
                 recv = self.child_conn.recv()
+                print 'parent called me:',num,recv
                 if recv == 'drop':
                     print 'DROPING'
                     self.tbmg.timers.remove(timelabel)
@@ -904,18 +915,19 @@ class ScapyBridge(object):
                         self.tbmg.timers.remove(timelabel)
                     except:
                         print 'could not remove timelabel'
-                        pass
-                    print 'here it goes again...'
                     #try:
                     #self.clearDisect()
-                    #test_frame.destroy()
+                    print 'removed timer...'
+                    if not(was_intercepting and not self.intercepting):
+                        print 'destorying frame'
+                        test_frame.destroy()
                     #self.clearRaw()
                     #except:
                     #    print 'troubling clearings stuff up'
                     #    pass
-                    print 'accept release'
+                    print 'accept going to release'
                     self.display_lock.release()
-                    print 'released'
+                    print 'accept released'
                     if data:
                         return data, interceptor.NF_ACCEPT
                     elif self.intercepting:
