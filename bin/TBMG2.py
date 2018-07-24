@@ -140,11 +140,14 @@ class Application(Frame):
                 os.system('iptables-save > ' + self.iptables_save)
             self.scapybridgeR.proxyToggle()
             self.scapybridgeS.proxyToggle()
+            if self.scapybridgeS.intercepting and not self.scapybridgeS.status:
+                self.extraInterceptedGUI(False)
+                self.extraInterceptedGUI(True)
             if not self.scapybridgeR.status:
-                print 'proxy is turned off'
+                print 'proxy is turned OFF'
                 self.restoreIPTables()
             else:
-                print 'proxy is turned on'
+                print 'proxy is turned ON'
             self.startproxy.config(bg=self.red)
             if self.scapybridgeR.status:
                 self.startproxy.config(bg=self.green)
@@ -152,7 +155,7 @@ class Application(Frame):
         def toggleInterceptBoth():
             self.scapybridgeR.interceptToggle()
             self.scapybridgeS.interceptToggle()
-            extraInterceptedGUI(self.scapybridgeS.intercepting)
+            self.extraInterceptedGUI(self.scapybridgeS.intercepting)
             time.sleep(.1)
             root_widgit.update_idletasks()
             root_widgit.configure(height=root_tab.winfo_reqheight())
@@ -177,35 +180,6 @@ class Application(Frame):
             self.defaultproxyfiltertext.config(bg=self.grey)
             if self.scapybridgeS.filter:
                 self.defaultproxyfiltertext.config(bg=self.green)
-            
-        def extraInterceptedGUI(is_intercepting):
-            if is_intercepting:
-                # intercpetd queue
-                self.netqueueframeS = VerticalScrolledFrame(self.disect_tab_out, height=100, width=40)
-                self.netqueueframeS.grid(row=0, column=3, columnspan=2)
-                self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n', width='95')
-                self.netqueueLableS.pack()
-                self.interceptsizelabelS = Label(self.disect_tab_out, width=5)
-                self.interceptsizelabelS.grid(row=0,column=6)
-                
-                self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
-                self.netqueueframeR.grid(row=0, column=3, columnspan=2)
-                self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n', width='95')
-                self.netqueueLableR.pack()
-                self.interceptsizelabelR = Label(self.disect_tab_in, width=5)
-                self.interceptsizelabelR.grid(row=0, column=6)
-                
-                
-            else:
-                try:
-                    self.netqueueframeS.destroy()
-                    self.netqueueLableS.destroy()
-                    self.netqueueframeR.destroy()
-                    self.netqueueLableR.destroy()
-                    self.loadPacksFromPcap.destroy()
-                    self.pack_view.destroy()
-                except:
-                    pass
 
         def sendFuzzer():
             print 'going to fuzz:'
@@ -393,6 +367,38 @@ class Application(Frame):
         #############################################################
         #############################################################
         self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
+        self.extraInterceptedGUI_lock = Lock()
+
+    def extraInterceptedGUI(self, is_intercepting):
+        self.extraInterceptedGUI_lock.acquire()
+        if is_intercepting:
+            # intercpetd queue
+            self.netqueueframeS = VerticalScrolledFrame(self.disect_tab_out, height=100, width=40)
+            self.netqueueframeS.grid(row=0, column=3, columnspan=2)
+            self.netqueueLableS = Label(self.netqueueframeS.interior, text='NET QUEUE\n----\n', width='95')
+            self.netqueueLableS.pack()
+            self.interceptsizelabelS = Label(self.disect_tab_out, width=5)
+            self.interceptsizelabelS.grid(row=0, column=6)
+        
+            self.netqueueframeR = VerticalScrolledFrame(self.disect_tab_in, height=100, width=40)
+            self.netqueueframeR.grid(row=0, column=3, columnspan=2)
+            self.netqueueLableR = Label(self.netqueueframeR.interior, text='NET QUEUE\n----\n', width='95')
+            self.netqueueLableR.pack()
+            self.interceptsizelabelR = Label(self.disect_tab_in, width=5)
+            self.interceptsizelabelR.grid(row=0, column=6)
+    
+        else:
+            try:
+                #self.netqueueLableS.destroy()
+                self.netqueueframeS.destroy()
+                #self.netqueueLableR.destroy()
+                self.netqueueframeR.destroy()
+                self.loadPacksFromPcap.destroy()
+                self.pack_view.destroy()
+            except:
+                pass
+        print 'finished extraInterceptedGUI', is_intercepting
+        self.extraInterceptedGUI_lock.release()
         
     def restoreIPTables(self):
         try:
@@ -402,7 +408,6 @@ class Application(Frame):
                 print 'restored iptables'
         except:
             print 'TROUBLE RESTORING IPTABLES************************'
-            pass
         
     def updateTimers(self):
         now = datetime.datetime.now().strftime("%H:%M:%S.%f")

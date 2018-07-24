@@ -41,9 +41,12 @@ class VerticalScrolledFrame(Frame):
         self.interior.bind('<Configure>', _configure_interior)
 
         def _configure_canvas(event):
-            if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
-                # update the inner frame's width to fill the canvas
-                self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
+            try:
+                if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
+                    # update the inner frame's width to fill the canvas
+                    self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
+            except Exception as e:
+                print '_configure_canvas err:',e
         self.canvas.bind('<Configure>', _configure_canvas)
 
 

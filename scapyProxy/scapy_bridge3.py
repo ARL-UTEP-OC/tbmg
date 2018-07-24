@@ -49,6 +49,7 @@ class ScapyBridge(object):
         self.display_lock = Lock()
         self.queue_lock = Lock()
         self.nointerceptLock = Lock()
+        self.clear_queue_lock = Lock()
         self.pack_num_counter=1
         self.skip_to_pack_num=0#use me to skip ahead
         self.pack_view_packs =[]
@@ -321,16 +322,8 @@ class ScapyBridge(object):
                 w.destroy()
                 
     def clearQueue(self):
-        try:
-            if self.is_outgoing:
-                for w in self.tbmg.netqueueframeS.interior.winfo_children():
-                    w.destroy()
-            else:
-                for w in self.tbmg.netqueueframeR.interior.winfo_children():
-                    w.destroy()
-        except:
-            pass
-        print 'done clearing queue :D'
+        self.tbmg.extraInterceptedGUI(False)
+        self.tbmg.extraInterceptedGUI(True)
      
     def clearRaw(self):
         if self.is_outgoing:
@@ -621,7 +614,7 @@ class ScapyBridge(object):
                 pass
         else:
             self.clearRaw()
-        if self.is_outgoing:
+        if self.is_outgoing and self.status:
             #called last
             self.tbmg.scapybridgeR.setIPTables()
             self.tbmg.scapybridgeS.setIPTables()
@@ -685,7 +678,6 @@ class ScapyBridge(object):
                     self.skip_to_pack_num = 0
                     self.clearRaw()
                     self.clearDisect()
-                    self.clearQueue()
                 #os.system('iptables -F')
                 #os.system('iptables -X')
                 #print 'stoping proxy'
@@ -694,7 +686,7 @@ class ScapyBridge(object):
             except Exception, e:
                 print 'proxy err:',e
                 pass
-            self.cleanup='Ready'
+            self.cleanup = 'Ready'
 
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
@@ -707,6 +699,7 @@ class ScapyBridge(object):
             self.skip_to_pack_num = dst_num
             self.parent_conn.send('accept')
         try:
+            i_have_lock = False
             if not self.status:
                 print 'I should not be on...'
                 return data, interceptor.NF_ACCEPT
@@ -756,13 +749,19 @@ class ScapyBridge(object):
             
             # list packet arival
             self.queue_lock.acquire()
+            i_have_lock = 1
             print("Got a packet " + str(num))  # +":", packet.summary())
+            parent = None
             test_frame = None
             button = None
             timelabel = None
             if self.intercepting:
                 id = time.time()  # self.getID()
                 parent = self.tbmg.netqueueframeS if self.is_outgoing else self.tbmg.netqueueframeR
+                if not self.status:
+                    print 'Trying to make invalid GUI stuff', self.status
+                    self.queue_lock.release()
+                    return data, interceptor.NF_ACCEPT
                 test_frame = Frame(parent.interior)
                 summary = packet.summary()
                 if len(summary) > 140:
@@ -791,6 +790,7 @@ class ScapyBridge(object):
                 test_frame.pack()
                 self.tbmg.timers.append(timelabel)
             self.queue_lock.release()
+            i_have_lock = 0
             '''
                 # TODO check queue gui
                 def checkReorderQueue():
@@ -862,22 +862,29 @@ class ScapyBridge(object):
             was_intercepting = self.intercepting
             print 'want lock'
             self.display_lock.acquire()
+            i_have_lock = 2
             print 'got lock for ',str(num)
             if not self.status:
                 print 'I should not be on...', num
                 try:
                     if timelabel:
+                        print 'removing timelabel'
                         self.tbmg.timers.remove(timelabel)
-                        if self.cleanup:
-                            self.clearQueue()
                 except Exception as e:
-                    print e
+                    print 'I should not be on err1', num, e
+                try:
+                    if self.cleanup and parent:
+                        print 'calling to clean queue'
+                        self.clearQueue()
+                except Exception as e:
+                    print 'I should not be on err2',num,e
                 self.display_lock.release()
                 if data:
                     return data, interceptor.NF_ACCEPT
                 elif self.intercepting:
                     #sendp(packet)
-                    return
+                    pass
+                return
             #if self.skip_to_pack_num:
             if num < self.skip_to_pack_num:
                 print 'skipping! im at', str(num)
@@ -940,7 +947,7 @@ class ScapyBridge(object):
                     #try:
                     #self.clearDisect()
                     print 'removed timer...'
-                    if not(was_intercepting and not self.intercepting) and self.status:
+                    if not(was_intercepting and not self.intercepting) and self.status:#if normal skip/accept
                         print 'destorying frame'
                         test_frame.destroy()
                     #self.clearRaw()
@@ -1033,6 +1040,10 @@ class ScapyBridge(object):
             print 'ERRRRRRRRRR!!!!',e
             try:
                 print 'releasing lock'
-                self.display_lock.release()
+                if i_have_lock == 2:
+                    self.display_lock.release()
+                if i_have_lock == 1:
+                    self.queue_lock.release()
             except:
                 pass
+        return data,interceptor.NF_ACCEPT
