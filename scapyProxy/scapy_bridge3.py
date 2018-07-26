@@ -82,7 +82,7 @@ class ScapyBridge(object):
             sys.stdout = self.save_stdout
             replace_incoming = Button(popup, text='Replace Incoming',command=lambda pack=pkt: self.tbmg.scapybridgeR._packet_disect_intercept(pack,True))
             replace_outgoing = Button(popup, text='Replace Outgoing',command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack,True))
-            manual = Button(popup, text='Manual Send', command=lambda pack=pkt: self.tbmg.scapybridgeS._packet_disect_intercept(pack,3))
+            manual = Button(popup, text='Manual Send', command=lambda pack=pkt.copy(): self.tbmg.scapybridgeS._packet_disect_intercept(pack,3))
             manual.grid(row=6, column=0)
             msg = ScrolledText(popup)
             msg.grid(row=0,column=0,columnspan=3, sticky='NEWS')
@@ -102,11 +102,13 @@ class ScapyBridge(object):
         i = 0
         packets = rdpcap(name)
         for p in packets:
+            if i>1200:
+                break
             summary = p.summary()
             if len(summary) > 140:
                 summary = summary[:len(summary)/2]+"\n"+summary[len(summary)/2:]
-            #print (i, p.summary())
-            b = Button(self.tbmg.pack_view.interior, text=summary, width=80, command=lambda j=i: popUP(j))
+            print (i)
+            b = Button(self.tbmg.pack_view.interior, text=str(i)+":"+summary, width=80, command=lambda j=i: popUP(j))
             if p.lastlayer().name in self.proto_colors:
                 b.config(bg=(self.proto_colors[p.lastlayer().name]))
             else:
@@ -152,7 +154,24 @@ class ScapyBridge(object):
     def sendRawUpdate(self):
         if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
             text = str(self.tbmg.rawtextP.get('0.0', END)).strip()
-            print 'going to send...'
+            self.current_packPCAP = Ether(text.decode('hex'))
+            print 'going to send raw...'
+            self.current_packPCAP.show2()
+            try:
+                del(self.current_packPCAP['IP'].chksum)
+                del (self.current_packPCAP['IP'].len)
+            except:
+                print 'messed up fixing checksum/len'
+            try:
+                del (self.current_packPCAP['UDP'].chksum)
+                del (self.current_packPCAP['UDP'].len)
+            except:
+                print 'messed up fixing checksum/len udp'
+            try:
+                del (self.current_packPCAP['TCP'].chksum)
+                del (self.current_packPCAP['TCP'].len)
+            except:
+                print 'messed up fixing checksum/len tcp'
             sendp(self.current_packPCAP)
             print 'send packet'
             return
@@ -166,7 +185,13 @@ class ScapyBridge(object):
                 self.parent_conn.send('raw')
                 self.parent_conn.send(text)
             else:
-                print 'going to send...'
+                print 'going to send raw...'
+                self.current_packPCAP.show2()
+                try:
+                    del (self.current_packPCAP['IP'].chksum)
+                    del (self.current_packPCAP['IP'].len)
+                except:
+                    print 'messed up fixing checksum/len'
                 sendp(self.current_pack)
                 print 'send packet'
     
@@ -236,7 +261,7 @@ class ScapyBridge(object):
                                     print 'should be ok HEX:',hex_value
                                     hex_value = hex_value.decode('hex')
                                     local_current_pack[layer].fields[pair[1].cget('text')] = hex_value
-                                    print('found HEX', hex_value, 'org had:',getattr(local_current_pack[layer], pair[1].cget('text')), 'at:',pair[1].cget('text'))
+                                    print('found HEX', hex_value, 'now has:',getattr(local_current_pack[layer], pair[1].cget('text')), 'at:',pair[1].cget('text'), ' in:',layer)
                                     continue
                     except Exception:
                         pass
@@ -299,6 +324,23 @@ class ScapyBridge(object):
             self.parent_conn.send(r)
         else:
             print 'going to send...'
+            local_current_pack.show2()
+            self.current_packPCAP.show2()
+            try:
+                del (self.current_packPCAP['IP'].chksum)
+                del (self.current_packPCAP['IP'].len)
+            except:
+                print 'messed up fixing checksum/len'
+            try:
+                del (self.current_packPCAP['UDP'].chksum)
+                del (self.current_packPCAP['UDP'].len)
+            except:
+                print 'messed up fixing checksum/len udp'
+            try:
+                del (self.current_packPCAP['TCP'].chksum)
+                del (self.current_packPCAP['TCP'].len)
+            except:
+                print 'messed up fixing checksum/len tcp'
             sendp(local_current_pack)
             print 'send packet'
         if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
@@ -595,7 +637,7 @@ class ScapyBridge(object):
         
         print 'intercpet is:', (self.intercepting)
         if not self.intercepting:
-            print self.is_outgoing, 'locked?:', self.display_lock.locked()
+            print 'IsOutgoing?', self.is_outgoing, ' - locked?:', self.display_lock.locked()
             self.skip_to_pack_num = sys.maxint - 1
             self.parent_conn.send('accept')
             while self.display_lock.locked():
@@ -889,8 +931,10 @@ class ScapyBridge(object):
             if num < self.skip_to_pack_num:
                 print 'skipping! im at', str(num)
                 if not (was_intercepting and not self.intercepting) and test_frame:
+                    print 'normal skip'
                     test_frame.destroy()
                 self.tbmg.timers.remove(timelabel)
+                print 'releasing from skip....'
                 self.display_lock.release()
                 if data:
                     return data, interceptor.NF_ACCEPT
@@ -974,14 +1018,21 @@ class ScapyBridge(object):
                 
                 # fix chksum and len
                 try:
-                    del (self.current_pack['IP'].chksum)
+                    del (self.current_packPCAP['IP'].chksum)
+                    del (self.current_packPCAP['IP'].len)
                 except:
-                    pass
+                    print 'messed up fixing checksum/len udp'
                 try:
-                    del (self.current_pack['TCP'].chksum)
+                    del (self.current_packPCAP['UDP'].chksum)
+                    del (self.current_packPCAP['UDP'].len)
                 except:
-                    pass
-                #TODO check chksum.....
+                    print 'messed up fixing checksum/len udp'
+                try:
+                    del (self.current_packPCAP['TCP'].chksum)
+                    del (self.current_packPCAP['TCP'].len)
+                except:
+                    print 'messed up fixing checksum/len tcp'
+                
                 self.clearDisect()
                 self.clearRaw()
                 #handle updated packet
