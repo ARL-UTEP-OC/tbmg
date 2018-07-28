@@ -58,6 +58,7 @@ class ScapyBridge(object):
         self.arp_stop = False
         self.arp_sniff_thread = Thread(target=self.arpSniff)
         self.arp_sniff_thread.setDaemon(True)
+        self.proto_colors = {}
         self.loadSettings()
         
     def loadSettings(self):
@@ -172,7 +173,10 @@ class ScapyBridge(object):
                 del (self.current_packPCAP['TCP'].len)
             except:
                 print 'messed up fixing checksum/len tcp'
-            sendp(self.current_packPCAP)
+            if self.tbmg.output_interface:
+                sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+            else:
+                sendp(self.current_packPCAP)
             print 'send packet'
             return
         if self.intercepting:
@@ -192,7 +196,10 @@ class ScapyBridge(object):
                     del (self.current_packPCAP['IP'].len)
                 except:
                     print 'messed up fixing checksum/len'
-                sendp(self.current_pack)
+                if self.tbmg.output_interface:
+                    sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+                else:
+                    sendp(self.current_pack)
                 print 'send packet'
     
     def sendDisectUpdate(self):
@@ -341,7 +348,10 @@ class ScapyBridge(object):
                 del (self.current_packPCAP['TCP'].len)
             except:
                 print 'messed up fixing checksum/len tcp'
-            sendp(local_current_pack)
+            if self.tbmg.output_interface:
+                sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+            else:
+                sendp(local_current_pack)
             print 'send packet'
         if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
             self.gui_layersPCAP = None
@@ -1048,12 +1058,18 @@ class ScapyBridge(object):
                 if org['Ether'] != self.current_pack['Ether']:
                     if data:
                         self.ether_pass.append(self.current_pack)
-                        sendp(self.current_pack)
+                        if self.tbmg.output_interface:
+                            sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+                        else:
+                            sendp(self.current_pack)
                         test_frame.destroy()
                         self.display_lock.release()
                         return raw(self.current_pack), interceptor.NF_DROP
                     elif self.intercepting:
-                        sendp(self.current_pack)
+                        if self.tbmg.output_interface:
+                            sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+                        else:
+                            sendp(self.current_pack)
                         self.display_lock.release()
                         return
                 # TODO efficently delte self from packet queue
@@ -1061,7 +1077,10 @@ class ScapyBridge(object):
                     self.display_lock.release()
                     return raw(self.current_pack['IP']), interceptor.NF_ACCEPT
                 elif self.intercepting:
-                    sendp(self.current_pack)
+                    if self.tbmg.output_interface:
+                        sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+                    else:
+                        sendp(self.current_pack)
                     self.display_lock.release()
                     return
             else:

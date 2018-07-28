@@ -127,9 +127,16 @@ class Application(Frame):
         #############################################################
 
         self.page5 = page5
-        self.macs = []
+        self.macs = [] #used for arp traffic
+        self.interfaces = [] #used for scapy output
         for i in netifaces.interfaces():
-            self.macs.append(netifaces.ifaddresses(i)[netifaces.AF_LINK][0]['addr'])
+            mac = netifaces.ifaddresses(i)[netifaces.AF_LINK][0]['addr']
+            self.macs.append(mac)
+            try:
+                ip = netifaces.ifaddresses(i)[netifaces.AF_INET][0]['addr']
+            except:
+                pass
+            self.interfaces.append([str(i),ip,mac])
         print 'MY MACS:', self.macs
         self.scapybridgeS = ScapyBridge(self, True)
         self.scapybridgeR = ScapyBridge(self, False)
@@ -364,6 +371,29 @@ class Application(Frame):
         self.page6 = page6
         self.timers = []
         self.updateTimers()
+        #############################################################
+        #############################################################
+        self.page7 = page7
+        self.output_interface = None
+            
+        def popUpInterfaces():
+            def setOutputInterface(name):
+                self.output_interface = name
+                print 'OUT INTERFACE = ', name
+                popup.destroy()
+            popup = Toplevel()
+            popup.title = 'Select Output Interface'
+            scroll = VerticalScrolledFrame(popup)
+            scroll.pack()
+            for device in self.interfaces:
+                print 'devices:',device
+                b = Button(scroll, text=(device[0]+"; "+device[1]+"; "+device[2]), command=lambda name=device[0]: setOutputInterface(name))
+                b.pack()
+            b = Button(scroll, text='Default', command=lambda: setOutputInterface(None))
+            b.pack()
+        
+        self.select_interface = Button(page7, text='Select Scapy Output\nInterface', command=popUpInterfaces)
+        self.select_interface.grid(row=0, column=0, sticky='NEWS')
         #############################################################
         #############################################################
         self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
@@ -1592,6 +1622,9 @@ nb2.add(page5, text='Scapy Proxy', sticky='NESW')
 
 page6 = ttk.Frame(nb2)
 nb2.add(page6, text="Fuzzer", state=DISABLED, sticky='NESW')
+
+page7 = ttk.Frame(nb2)
+nb2.add(page7, text="Settings", sticky='NESW')
 
 #page7 = ttk.Frame(nb2)
 #nb2.add(page6, text="Hook", state=DISABLED, sticky='NESW')
