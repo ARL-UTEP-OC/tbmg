@@ -1,5 +1,6 @@
 import sys
 sys.path.insert(0, '../')
+sys.path.insert(0, '../scapyProxy')
 from Tkinter import *
 from ttkthemes import themed_tk
 from ScrolledText import ScrolledText
@@ -21,12 +22,13 @@ from fieldObject import fieldObj
 from StringIO import StringIO
 from collections import OrderedDict
 from scapyCustomizerTBMG import scapyCustomizerTBMG
-from scapyProxy.scapy_bridge3 import *
+from scapy_bridge3 import *
+from GuiUtils import VerticalScrolledFrame
+from AFLScapy import FuzzPacket
+from HookUtils import HookProfile
 import tkFileDialog
 import threading
-from scapyProxy.GuiUtils import VerticalScrolledFrame
 import netifaces
-from scapyProxy.AFLScapy import FuzzPacket
 import datetime
 
 class Application(Frame):
@@ -374,6 +376,35 @@ class Application(Frame):
         #############################################################
         #############################################################
         self.page7 = page7
+        self.active_hook_profile = HookProfile(tbmg=self)
+        
+        
+        def askForProfile():
+            name = tkFileDialog.askopenfilename(initialdir="/root/tbmg/bin/Profiles", filetypes=[("Profile XML", "*.xml")])
+            if not name:
+                return
+            self.active_hook_profile = HookProfile(name, tbmg=self)
+            
+        def askSaveProfile():
+            name = tkFileDialog.asksaveasfile(mode='w', defaultextension=".xml", initialdir="/root/tbmg/bin/Profiles")
+            if not name:
+                return
+            self.active_hook_profile.saveTo(name)
+         
+        self.addhook = Button(page7, text="Add Hook...", command=self.active_hook_profile.chooseHook)
+        self.addhook.grid(row=0, column=0, sticky='NEWS')
+        self.loadprofile = Button(page7, text="Load Profile...", command=askForProfile)
+        self.loadprofile.grid(row=0, column=1, sticky='NEWS')
+        self.scrollhooks = VerticalScrolledFrame(page7)
+        self.scrollhooks.grid(row=1, column=0, columnspan=2, sticky='NEWS')
+        self.scrollhooks_width = Label(self.scrollhooks.interior, text='', width=80)
+        self.scrollhooks_width.grid(row=0, column=0, sticky="NEW")
+        self.saveprofile = Button(page7, text='Save Profile...', command=askSaveProfile)
+        self.saveprofile.grid(row=2, column=0, columnspan=2, sticky='NEWS')
+        self.updateHookGUI()
+        #############################################################
+        #############################################################
+        self.page8 = page8
         self.output_interface = None
             
         def popUpInterfaces():
@@ -388,16 +419,37 @@ class Application(Frame):
             for device in self.interfaces:
                 print 'devices:',device
                 b = Button(scroll, text=(device[0]+"; "+device[1]+"; "+device[2]), command=lambda name=device[0]: setOutputInterface(name))
-                b.pack()
+                b.pack(fill=X)
             b = Button(scroll, text='Default', command=lambda: setOutputInterface(None))
-            b.pack()
+            b.pack(fill=X)
         
-        self.select_interface = Button(page7, text='Select Scapy Output\nInterface', command=popUpInterfaces)
+        self.select_interface = Button(page8, text='Select Scapy Output\nInterface', command=popUpInterfaces)
         self.select_interface.grid(row=0, column=0, sticky='NEWS')
         #############################################################
         #############################################################
         self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
         self.extraInterceptedGUI_lock = Lock()
+
+    def updateHookGUI(self):
+        if hasattr(self, 'active_hook_profile'):
+            if self.active_hook_profile.hook_frames:
+                for frame in self.active_hook_profile.hook_frames:
+                    frame.destroy()
+            i=0
+            for hook in self.active_hook_profile.hook_manager:
+                frame = Frame(self.scrollhooks.interior, width=70)
+                frame.grid(row=i, column=0)
+                i += 1
+                label = Label(frame, text=hook[0].__name__, width=40)
+                label.grid(row=0, column=0, sticky='NEWS')
+                activate = Button(frame, text='N', width=10)
+                activate.grid(row=0, column=1, sticky='NEWS')
+                activate.config(bg=self.red)ra
+                delete = Button(frame, text='Remove', width=10)
+                delete.grid(row=0, column=2, sticky='NEWS')
+                about = Button(frame, text='?', width=10)
+                about.grid(row=0, column=3, sticky='NEWS')
+                self.active_hook_profile.hook_frames.append(frame)
 
     def extraInterceptedGUI(self, is_intercepting):
         self.extraInterceptedGUI_lock.acquire()
@@ -452,7 +504,13 @@ class Application(Frame):
             elif secs >= 15:
                 timer.config(bg=self.yellow)
         root.after(3000, self.updateTimers)
-            
+    
+#######################################################################################
+#######################################################################################
+#before my time vvvvv - the4960
+#######################################################################################
+#######################################################################################
+    
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
 		if self.transport != None:
 			self.ports.grid_remove()
@@ -1409,7 +1467,11 @@ def FlagActualSend(onoff):
 	else:
 		os.remove(fname)
 
-##############################################
+#######################################################################################
+#######################################################################################
+#before my time ^^^^^^ - the4960
+#######################################################################################
+#######################################################################################
 root_widgit=None
 root_tab=None
 
@@ -1624,9 +1686,12 @@ page6 = ttk.Frame(nb2)
 nb2.add(page6, text="Fuzzer", state=DISABLED, sticky='NESW')
 
 page7 = ttk.Frame(nb2)
-nb2.add(page7, text="Settings", sticky='NESW')
+nb2.add(page7, text="Hooks", sticky='NESW')
 
-#page7 = ttk.Frame(nb2)
+page8 = ttk.Frame(nb2)
+nb2.add(page8, text="Settings", sticky='NESW')
+
+#page8 = ttk.Frame(nb2)
 #nb2.add(page6, text="Hook", state=DISABLED, sticky='NESW')
 
 app = Application(root)

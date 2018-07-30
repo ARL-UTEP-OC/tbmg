@@ -8,7 +8,7 @@ from scapy.all import *
 import os
 from multiprocessing import Pipe
 import time
-from scapyProxy.GuiUtils import VerticalScrolledFrame
+from GuiUtils import VerticalScrolledFrame
 import interceptor
 from StringIO import StringIO
 import sys

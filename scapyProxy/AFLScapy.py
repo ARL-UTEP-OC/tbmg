@@ -5,7 +5,7 @@ from collections import defaultdict
 import os
 import threading
 import time
-from scapyProxy.GuiUtils import VerticalScrolledFrame
+from GuiUtils import VerticalScrolledFrame
 from Tkinter import *
 from multiprocessing import Process
 
