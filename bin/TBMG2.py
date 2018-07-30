@@ -431,25 +431,51 @@ class Application(Frame):
         self.extraInterceptedGUI_lock = Lock()
 
     def updateHookGUI(self):
+        def toggleActive(index):
+            pass
+        
+        def removeHook(index):
+            self.active_hook_profile.delHook(index)
+        
+        def displayDescription(index):
+            popup = Toplevel()
+            popup.title = "About"
+            text = self.active_hook_profile.hook_manager[index][4]
+            new_text= ''
+            for i in range(0,len(text),50):
+                new_text= new_text+text[i:i+50]+'\n'
+            if len(text)==0 or text==None or text=='None':
+                new_text="This hook has no description"
+            label = Label(popup, text=new_text, width=50)
+            label.grid(row=0,column=0,sticky='NEWS',columnspan=3)
+            done = Button(popup,text='OK',command=popup.destroy)
+            done.grid(row=1,column=1,sticky='NEWS')
+        
+        
         if hasattr(self, 'active_hook_profile'):
-            if self.active_hook_profile.hook_frames:
-                for frame in self.active_hook_profile.hook_frames:
-                    frame.destroy()
+            for w in self.scrollhooks.interior.winfo_children():
+                if w == self.scrollhooks_width:
+                    continue
+                w.destroy()
             i=0
             for hook in self.active_hook_profile.hook_manager:
                 frame = Frame(self.scrollhooks.interior, width=70)
                 frame.grid(row=i, column=0)
-                i += 1
                 label = Label(frame, text=hook[0].__name__, width=40)
                 label.grid(row=0, column=0, sticky='NEWS')
-                activate = Button(frame, text='N', width=10)
+                activate = Button(frame, width=10, command= lambda index=i: toggleActive(index))
                 activate.grid(row=0, column=1, sticky='NEWS')
-                activate.config(bg=self.red)ra
-                delete = Button(frame, text='Remove', width=10)
+                if hook[5]:
+                    activate.config(bg=self.green)
+                    activate.config(text='Y')
+                else:
+                    activate.config(bg=self.red)
+                    activate.config(text='N')
+                delete = Button(frame, text='Remove', width=10, command= lambda index=i: removeHook(index))
                 delete.grid(row=0, column=2, sticky='NEWS')
-                about = Button(frame, text='?', width=10)
+                about = Button(frame, text='?', width=10, command= lambda index=i: displayDescription(index))
                 about.grid(row=0, column=3, sticky='NEWS')
-                self.active_hook_profile.hook_frames.append(frame)
+                i += 1
 
     def extraInterceptedGUI(self, is_intercepting):
         self.extraInterceptedGUI_lock.acquire()

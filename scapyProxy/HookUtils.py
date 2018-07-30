@@ -63,7 +63,6 @@ class HookProfile(object):
         self.tbmg = tbmg
         print 'hookprofile tmbg:',self.tbmg
         self.hook_manager = []#=[[(class)class, (string - dir path)module, (string)file, (class)super, (string)description, (bool)active],[],....]
-        self.hook_frames = []
         self.xml_root = None
         self.profile_path = profile_path if profile_path else 'active.xml'
         if os.path.isfile(self.profile_path):
@@ -72,9 +71,13 @@ class HookProfile(object):
             self.saveTo(self.profile_path)
     
     #serialize self from xml
-    def loadFromXML(self):
+    def loadFromXML(self, new_profile_path=None):
+        self.hook_manager = []
         try:
-            xml = open(self.profile_path,'r').read()
+            if new_profile_path:
+                self.profile_path=new_profile_path
+            xml = open(self.profile_path, 'r').read()
+            print 'loading from xml:',self.profile_path
             blank_packet = IP()
             self.xml_root = objectify.fromstring(xml)
             for h in self.xml_root.getchildren():
@@ -115,7 +118,7 @@ class HookProfile(object):
             h.module = hook[1].strip()
             h.file = hook[2].strip()
             h.super = hook[3].__name__
-            h.description = hook[4].strip()
+            h.description = str(hook[4]).strip()
             h.active = hook[5]
         print 'genXML done:', str(etree.tostring(self.xml_root,pretty_print=True))
         self.tbmg.updateHookGUI()
@@ -125,15 +128,20 @@ class HookProfile(object):
     def saveTo(self,new_profile_path=None):
         if not new_profile_path:
             new_profile_path = self.profile_path
+        else:
+            new_profile_path = new_profile_path.name
         xml = self._genXML()
         if xml:
             print 'writing to',new_profile_path
+            print 'writing:',xml
             f = open(new_profile_path, 'w')
             f.write(xml)
             f.close()
             
-    def delHook(self, hook_class):
-        pass
+    def delHook(self, index):
+        del (self.hook_manager[index])
+        self.saveTo()
+        self.tbmg.updateHookGUI()
             
     def addHook(self, hook_class, module_path, file_name, hook_super, description, active):
         if hook_super==None:
