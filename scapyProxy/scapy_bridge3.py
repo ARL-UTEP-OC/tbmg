@@ -101,6 +101,7 @@ class ScapyBridge(object):
         #sizelabel = Label(self.tbmg.pack_view.interior, text='', width=80)
         #sizelabel.grid(row=0, column=0, columnspan=2)
         i = 0
+        self.pack_view_packs=[]
         packets = rdpcap(name)
         for p in packets:
             if i>1200:
@@ -798,6 +799,40 @@ class ScapyBridge(object):
                     elif self.intercepting:
                         #sendp(packet)
                         return
+                    
+            #Perform hooks
+            for hook in self.tbmg.active_hook_profile.hook_manager:
+                if hook[5]: #is active
+                    try:
+                        old_packet = packet.copy()
+                        packet, accept_or_drop = hook[0](packet).run()
+                        # fix chksum and len
+                        try:
+                            del (packet['IP'].chksum)
+                            del (packet['IP'].len)
+                        except:
+                            print 'messed up fixing checksum/len udp'
+                        try:
+                            del (packet['UDP'].chksum)
+                            del (packet['UDP'].len)
+                        except:
+                            print 'messed up fixing checksum/len udp'
+                        try:
+                            del (packet['TCP'].chksum)
+                            del (packet['TCP'].len)
+                        except:
+                            print 'messed up fixing checksum/len tcp'
+                        print 'old pack:'
+                        old_packet.show()
+                        print 'new pack:'
+                        packet.show2()
+                        print '-----------------'
+                        if accept_or_drop == interceptor.NF_DROP:
+                            print 'hook is droping the packet'
+                            return data, interceptor.NF_DROP
+                    except:
+                        print 'HOOK FAILED'
+            
             
             # list packet arival
             self.queue_lock.acquire()

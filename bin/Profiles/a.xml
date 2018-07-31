@@ -1,0 +1,18 @@
+<profile xmlns:py="http://codespeak.net/lxml/objectify/pytype" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" py:pytype="TREE">
+  <hook>
+    <super py:pytype="str">FilterHook</super>
+    <class_name py:pytype="str">StopThatDrone</class_name>
+    <module py:pytype="str">/root/tbmg/bin/Hooks</module>
+    <file py:pytype="str">StopThatDrone</file>
+    <description py:pytype="str">None</description>
+    <active py:pytype="bool">false</active>
+  </hook>
+  <hook>
+    <super py:pytype="str">PacketHook</super>
+    <class_name py:pytype="str">SecondaryGoogle</class_name>
+    <module py:pytype="str">/root/tbmg/bin/Hooks</module>
+    <file py:pytype="str">DifferentGoogle</file>
+    <description py:pytype="str">None</description>
+    <active py:pytype="bool">false</active>
+  </hook>
+</profile>

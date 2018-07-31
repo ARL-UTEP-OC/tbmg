@@ -383,7 +383,7 @@ class Application(Frame):
             name = tkFileDialog.askopenfilename(initialdir="/root/tbmg/bin/Profiles", filetypes=[("Profile XML", "*.xml")])
             if not name:
                 return
-            self.active_hook_profile = HookProfile(name, tbmg=self)
+            self.active_hook_profile.loadFromXML(name)
             
         def askSaveProfile():
             name = tkFileDialog.asksaveasfile(mode='w', defaultextension=".xml", initialdir="/root/tbmg/bin/Profiles")
@@ -432,7 +432,7 @@ class Application(Frame):
 
     def updateHookGUI(self):
         def toggleActive(index):
-            pass
+            self.active_hook_profile.toggleActivateHook(index)
         
         def removeHook(index):
             self.active_hook_profile.delHook(index)

@@ -64,9 +64,10 @@ class HookProfile(object):
         print 'hookprofile tmbg:',self.tbmg
         self.hook_manager = []#=[[(class)class, (string - dir path)module, (string)file, (class)super, (string)description, (bool)active],[],....]
         self.xml_root = None
-        self.profile_path = profile_path if profile_path else 'active.xml'
-        if os.path.isfile(self.profile_path):
-            self.loadFromXML()
+        self.profile_path = 'active.xml'
+        path = profile_path if profile_path else self.profile_path
+        if os.path.isfile(path):
+            self.loadFromXML(path)
         else:
             self.saveTo(self.profile_path)
     
@@ -74,12 +75,12 @@ class HookProfile(object):
     def loadFromXML(self, new_profile_path=None):
         self.hook_manager = []
         try:
-            if new_profile_path:
-                self.profile_path=new_profile_path
-            xml = open(self.profile_path, 'r').read()
-            print 'loading from xml:',self.profile_path
+            if not new_profile_path:
+                new_profile_path = self.profile_path
+            xml = open(new_profile_path, 'r').read()
             blank_packet = IP()
             self.xml_root = objectify.fromstring(xml)
+            print 'loading from xml:', new_profile_path,'----',xml
             for h in self.xml_root.getchildren():
                 print 'hook xml:',str(etree.tostring(h,pretty_print=True))
                 sys.path.append(str(h.module))
@@ -106,6 +107,7 @@ class HookProfile(object):
             
         except Exception as e:
             print 'Could not load from xml. Error: ',e
+        print 'done loading xml:',self.hook_manager
         self.tbmg.updateHookGUI()
     
     #serialize self to xml
@@ -129,7 +131,10 @@ class HookProfile(object):
         if not new_profile_path:
             new_profile_path = self.profile_path
         else:
-            new_profile_path = new_profile_path.name
+            if isinstance(new_profile_path,str):
+                new_profile_path = new_profile_path
+            else:
+                new_profile_path = new_profile_path.name
         xml = self._genXML()
         if xml:
             print 'writing to',new_profile_path
@@ -137,7 +142,12 @@ class HookProfile(object):
             f = open(new_profile_path, 'w')
             f.write(xml)
             f.close()
-            
+    
+    def toggleActivateHook(self,index):
+        self.hook_manager[index][5] = not self.hook_manager[index][5]
+        self.saveTo()
+        self.tbmg.updateHookGUI()
+        
     def delHook(self, index):
         del (self.hook_manager[index])
         self.saveTo()
