@@ -117,11 +117,11 @@ class FuzzPacket:
 
     def populateFuzzerGUI(self):
         self.tbmg.start_fuzz = Button(self.tbmg.page6, text='Start Fuzz', command=self.GUIstartFuzz)
-        self.tbmg.start_fuzz.grid(row=0, column=0)
+        self.tbmg.start_fuzz.grid(row=0, column=0, sticky='NEWS')
         self.tbmg.stop_fuzz = Button(self.tbmg.page6, text='Stop Fuzz', command=self.GUIstopFuzz)
-        self.tbmg.stop_fuzz.grid(row=0, column=1)
+        self.tbmg.stop_fuzz.grid(row=0, column=1, sticky='NEWS')
         self.tbmg.packet_scroll = VerticalScrolledFrame(self.tbmg.page6, height=30, width=50)
-        self.tbmg.packet_scroll.grid(row=1, column=0)
+        self.tbmg.packet_scroll.grid(row=1, column=0, columnspan=2)
         self.populatePacket()
 
     def populatePacket(self):

@@ -35,6 +35,7 @@ class Application(Frame):
     def __init__(self, master):
         """initialize the frame"""
         Frame.__init__(self,master)
+        application = self
         top = self.winfo_toplevel()
         top.rowconfigure(0, weight=1)
         top.columnconfigure(0, weight=1)
@@ -178,7 +179,8 @@ class Application(Frame):
             f = tkFileDialog.asksaveasfile(mode='w', defaultextension=".pcap")
             if f is None:  # asksaveasfile return `None` if dialog closed with "cancel".
                 return
-            self.scapybridge.pcapfile = f.name
+            self.scapybridgeR.pcapfile = f.name
+            self.scapybridgeS.pcapfile = f.name
             print 'using',f.name
             f.close()
         
@@ -805,7 +807,8 @@ def displayModels(modelname):
 	
 	for child in page2.winfo_children():
 		child.destroy()
-
+	model_resize = Label(page2, text="")
+	model_resize.grid(row=0, column=0, sticky='NS', columnspan=10)
 	selectLabel = Label(page2, text="Select Model:", font = "bold")
 	selectLabel.grid(sticky = "W")
 	models = []
@@ -839,6 +842,13 @@ def displayModels(modelname):
 	editButton.grid()
 
 	nb.select(page2)
+	global show
+	if show != None:
+		show.delete(1.0, END)
+	else:
+		show = Text(page2)
+        show.insert(0.0,'\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+	show.grid(sticky="W")
 	
 	#self.tcp = BooleanVar()
         #Checkbutton(page2, text= "Create TCP Connection", variable = self.tcp, command = self.update_text).grid(row =6, column = 0, sticky = W)
@@ -1150,6 +1160,8 @@ def showmodeldata(name, modeltype, connecttype):
 	finally:
 		sys.stdout = old_stdout
 	show.insert(END, output)
+	#page2.configure(height=root_tab.winfo_reqheight())
+    
 def modifymodeldata(name, modeltype, connecttype):
 	global fieldObjectsArray, tcpEntry, destEntry, packet
 	global BTNEditedBG,BTNNotEditedBG
@@ -1529,6 +1541,13 @@ class AutoresizedNotebookChild(ttk.Notebook):
     
     def _on_tab_changed(self, event):
         global root_widgit
+        #TODO handle resize height on tab change!!!!!
+        #global application
+        print (dir(self))
+        #if application:
+        #    print application
+        #if application.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
+        
         event.widget.update_idletasks()
         root_widgit.configure(height=root_tab.winfo_reqheight())
         root_widgit.configure(width=root_tab.winfo_reqwidth())

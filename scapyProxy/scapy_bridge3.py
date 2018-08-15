@@ -16,6 +16,7 @@ import tkFileDialog
 from ScrolledText import ScrolledText
 import datetime
 import tkMessageBox
+import tempfile
 
 
 class ScapyBridge(object):
@@ -740,6 +741,25 @@ class ScapyBridge(object):
                 print 'proxy err:',e
                 pass
             self.cleanup = 'Ready'
+            
+    def hexToPacket(self, hex):
+        print 'org hex:',hex
+        hex = " ".join(hex[i:i+2] for i in range(0, len(hex), 2))
+        hex = "00000 " + hex
+        print ('want to use hex:', hex)
+        txt_fd, filename_txt = tempfile.mkstemp('.txt')
+        temp_txt = os.fdopen(txt_fd,'w')
+        temp_txt.write(hex)
+        temp_txt.close()
+        temp_pcap,filename_pcap = tempfile.mkstemp('.pcap')
+        command = "text2pcap "+filename_txt+" "+filename_pcap+" "
+        print ('using:', filename_txt, ' and ', filename_pcap, ' - doing: ', command)
+        os.system(command)
+        os.remove(filename_txt)
+        packet= rdpcap(filename_pcap)[0]
+        os.remove(filename_pcap)
+        return packet
+        
 
     # ran from seperate process
     def callback(self, ll_data, ll_proto_id, data, ctx):
@@ -759,12 +779,42 @@ class ScapyBridge(object):
             num = self.pack_num_counter
             self.pack_num_counter +=1 # may need to make this thread safe
             #TODO handle protos other than ether and IP T-T eg CookedLinux and maybe IPv6
+            '''
+            hex_text = ''
+            if ll_data:
+                hex_text = str(ll_data).encode('hex')
+                if data:
+                    hex_text = hex_text + str(data).encode('hex')
+                print 'data   :', ll_data, data
+                print 'encoded:', hex_text
+                packet = self.hexToPacket(hex_text)
+            else:
+                if data:
+                    packet = Ether(ll_data) / IP(data)
+                else:
+                    packet = Ether(ll_data)
+            '''
             if data:
                 packet = Ether(ll_data) / IP(data)
                 org = Ether(ll_data) / IP(data)
             else:
                 packet = Ether(ll_data)
-                org =Ether(ll_data)
+                org = Ether(ll_data)
+                
+            print'done dissect:'
+            packet.show2()
+            #if data:
+                #print ('want to use hex:', str(ll_data).encode('hex') + str(data).encode('hex'))
+                #packet = self.hexToPacket(str(ll_data).encode('hex') + str(data).encode('hex'))
+                #packet = Ether(ll_data) / IP(data)
+                #org = Ether(ll_data) / IP(data)
+            #else:
+                #print ('want to use hex:', str(ll_data).encode('hex'))
+            
+            #print 'rawCall:', raw(Raw(ll_data)).encode('hex'), raw(Raw(data)).encode('hex')
+            
+            #    packet = Ether(ll_data)
+            #    org =Ether(ll_data)
             
             #skip what I send
             if packet in self.ether_pass:#arp should not catch here...
@@ -1054,10 +1104,11 @@ class ScapyBridge(object):
                 elif recv == 'raw':
                     recv = str(self.child_conn.recv())
                     #TODO make more definite way...
-                    if data:
-                        self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
-                    else:
-                        self.current_pack = Ether(recv)#TODO check if arp gets this
+                    self.current_pack = self.hexToPacket(recv)
+                    #if data:
+                    #    self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
+                    #else:
+                    #    self.current_pack = Ether(recv)#TODO check if arp gets this
                 elif recv == 'disect':#already been modded
                     pass
                 
