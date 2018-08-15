@@ -57,7 +57,10 @@ def generateModels(modelName, transLayer, routingData):
     # Parse packet data
     xmlFilename = join(s.paths['model'], "modelStandardizedXMLFile.xml")
     packetData = ParsePacketData(modelName, open(xmlFilename).read())
-
+    
+    import json
+    print "\n\n",json.dumps(packetData,indent=4),"\n\n"
+    
     # Generate files
     produced = []
     for (output, template) in (ns3_single + scapy_single):

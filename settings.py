@@ -106,7 +106,8 @@ def parseXMLConfig(filename):
     return answer
 
 def createVersions(f, c):
-    c.add_section('versions')
+    if not c.has_section('versions'):
+        c.add_section('versions')
     c.set('versions', 'ns3', '3.26')
     c.set('versions', 'scapy', '2.3.2')
     
@@ -119,7 +120,8 @@ def createPaths(f, c, n):
     
     types = ['ns3', 'scapy']
     
-    c.add_section('paths')
+    if not c.has_section('paths'):
+        c.add_section('paths')
     c.set('paths', 'exbar', join(base, 'exbar'))
     c.set('paths', 'prospex', join(base, 'prospex'))
     c.set('paths', 'ns3', join(base, 'ns-allinone-3.26','ns-3.26')) #' + str(self.versions['ns3']), 'ns-' + str(self.versions['ns3'])))

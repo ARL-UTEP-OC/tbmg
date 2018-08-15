@@ -15,20 +15,25 @@ from os.path import join, exists, isfile
 from distutils.dir_util import mkpath
 from utils import *
 
-    
+def SectionPrint(title):
+    print "\n\n","="*80,"\n|\n|  ",title,"\n|\n","-"*80,"\n\n"
+
 # Archive Decompression
 #---------------------------------------------------------------------------------------------------
 def unpackArchives():
     if (not exists("ns-allinone-3.26")):
         creationCheck("ns-allinone-3.26.tar.bz2")
+        SectionPrint("unpackArchives: ns-allinone")
         pid = subprocess.call(['tar', 'jxvf', 'ns-allinone-3.26.tar.bz2'])
     
     if (not exists("prospex")):
         creationCheck("prospex.tgz")
+        SectionPrint("unpackArchives: prospex")
         res = subprocess.call(['tar', 'xvf', 'prospex.tgz'])
 
     if (not exists("exbar")):
         creationCheck("exbar.tgz")
+        SectionPrint("unpackArchives: exbar")
         res = subprocess.call(['tar', 'zxvf', 'exbar.tgz'])
 
 
@@ -41,6 +46,7 @@ def extractPackets(pcapFilename, protoname, model, keyword, fields, dissector):
     #   packets.xml - each packet in xml format (filtered on $PROTOCOL)
     #   fields.txt - packet data (in non-xml format)
     #   modelStandardizedXMLFile.xml - node specific information used for generating ns-3 scenario file (specific to icmp)
+    SectionPrint("extractPDML "+pcapFilename+" "+protoname+" "+model)
     extractPDML(pcapFilename, protoname, model, fields, dissector)
     creationCheck(join(s.paths['model'], "pdmlExtractor.xslt"))
     #creationCheck(join(s.paths['ns3-scenario'], model + "_hil.cc"))
@@ -51,6 +57,7 @@ def extractPackets(pcapFilename, protoname, model, keyword, fields, dissector):
     # Ensures the generation of:
     #   packetsTypes.xml - unique packets mapped to a number
     #   packetTypeSequences.txt - the sequence of packets (numbers) as taken from the pcap file
+    SectionPrint("extractPacketType "+model+" "+keyword)
     extractPacketType(model, keyword)
     creationCheck(join(s.paths['model'], "packetTypeSequences.txt"))
     creationCheck(join(s.paths['model'], "packetsTypes.xml"))
@@ -69,12 +76,15 @@ def buildStateMachine(model):
     dst = join(s.paths['statemachine'], "sessions.txt")
     copy(src, dst)
     
+    SectionPrint("buildStateMachine (exbar): make distclean")
     pid = subprocess.Popen(['make', 'distclean'], cwd=s.paths['exbar'])
     pid.wait()
     
+    SectionPrint("buildStateMachine (exbar): "+join(s.paths['exbar'],"autogen.sh"))
     pid = subprocess.Popen([join(s.paths['exbar'], 'autogen.sh')], cwd=s.paths['exbar'])
     pid.wait()
 
+    SectionPrint("buildStateMachine (exbar): make")
     pid = subprocess.Popen(['make'], cwd=s.paths['exbar'])
     pid.wait()
 
@@ -82,6 +92,7 @@ def buildStateMachine(model):
     copy(src, s.paths['prospex'])
     
     script = join(s.paths['prospex'], "prospex.py")
+    SectionPrint("buildStateMachine (prospex): python "+script+" "+s.paths['statemachine'])
     pid = subprocess.Popen(['python', script, s.paths['statemachine']], cwd=s.paths['prospex'])
     pid.wait()
 
@@ -89,6 +100,7 @@ def buildStateMachine(model):
 #---------------------------------------------------------------------------------------------------
 def setupNS3Model(model):
     script = join(s.paths['ns3'], "src", "create-module.py")
+    SectionPrint("setupNS3Model (prospex): python "+script+" "+model)
     pid = subprocess.Popen(['python', script, model], cwd=s.paths['prospex'])
     pid.wait()
 
@@ -143,13 +155,16 @@ def runSimulation(model, hil):
     pid = subprocess.Popen([join(s.paths['ns3'], "waf"), "configure"], cwd=s.paths['ns3'])
     pid.wait()
 
+    SectionPrint("runSimulation (ns3): make")
     pid = subprocess.Popen(['make'], cwd=s.paths['ns3'])
     pid.wait()
 
     # Run either the HIL or the sim-only scenario, depending on input file configuration
     if hil == "True":
+        SectionPrint("setupNS3Model (ns3): "+join(s.paths['ns3'],"waf")+" --run "+join("scratch",model+"_hil"))
         pid = subprocess.Popen([join(s.paths['ns3'], "waf"), '--run', join("scratch", model + "_hil")], cwd=s.paths['ns3'])
     else:
+        SectionPrint("setupNS3Model (ns3): "+join(s.paths['ns3'],"waf")+" --run "+join("scratch",model))
         pid = subprocess.Popen([join(s.paths['ns3'], "waf"), '--run', join("scratch", model)], cwd=s.paths['ns3'])
     pid.wait()
 
@@ -172,24 +187,33 @@ def buildModelStructure():
         mkpath(path)
 
 def main(xmlConfig):
+    SectionPrint("parseXMLconfig")
     c = s.parseXMLConfig(xmlConfig)
     
+    SectionPrint("unpackArchives")
     unpackArchives()
     if (exists(c["modelName"])):
         #result = raw_input("Existing " + config.modelName + " model will be replaced. Continue? (y/n) ")
         #if (result == "n"):
             #sys.exit()
+        SectionPrint("rm -r "+c["modelName"])
         subprocess.call(['rm', '-r', c["modelName"]])
-        
+    
     mkpath(join("models",c["modelName"]))
+    SectionPrint("loadSettings "+c["modelName"])
     s.loadSettings(c["modelName"])
     
+    SectionPrint("buildModelStructures")
     buildModelStructure()
+    SectionPrint("extractPackets"+c["pcapFilename"])
     extractPackets(c["pcapFilename"], c["protoName"], c["modelName"], c["keyword"], c["fields"], c["dissectorFilename"])
+    SectionPrint("buildStateMachine"+c["modelName"])
     buildStateMachine(c["modelName"])#uncomment
 #    setupNS3Model(c["modelName"])
 #    buildNS3Grammar(c["modelName"])
+    SectionPrint("buildScapyGrammer "+c["modelName"])
     buildScapyGrammar(c["modelName"])
+    SectionPrint("buildModels "+c["modelName"])
     buildModels(c["modelName"], c["transLayer"], {"remote": c["remote"], "local": c["local"], "gateway": c["gateway"]})
 #    runSimulation(c["modelName"], c["hil"])
 #    saveNS3Results(c["modelName"])

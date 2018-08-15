@@ -1,27 +1,32 @@
-TBMG (Traffic Based Model Generator)
+# TBMG (Traffic Based Model Generator)
 
-INSTALLATION
+## INSTALLATION
 
-	apt-get install graphviz
-	apt-get install matplotlib
+	`apt-get install graphviz`
+	`apt-get install matplotlib`
 
-	locate init.lua
-		expect to find these lines in /etc/wireshark/init.lua
+	locate `init.lua`
+		expect to find these lines in `/etc/wireshark/init.lua`
 		original settings/lines:
-			run_user_scripts_when_superuser = false
-			if running_superuser then
-			disable_lua = false
+			`run_user_scripts_when_superuser = false`
+			`if running_superuser then`
+			`disable_lua = false`
 		change/ensure these settings/lines:
-			run_user_scripts_when_superuser = true
-			if false && running_superuser then
-			disable_lua = false
+			`run_user_scripts_when_superuser = true`
+			`if false && running_superuser then`
+			`disable_lua = false`
 
+### FIXES
 
-USAGE
+	In `exbar/src/state-labels.h`, remove the `exbar::` from the `friend` declarations.
+
+## USAGE
 
 	python TBMG2.py
 	
-EXAMPLE - CREATE PROTOCOL MODEL (ICMP)
+## EXAMPLES
+
+### CREATE PROTOCOL MODEL (ICMP)
 
 	In "Model Generation" tab:
 		Protocol Name: icmp (this may have to match the dissector)
@@ -32,14 +37,14 @@ EXAMPLE - CREATE PROTOCOL MODEL (ICMP)
 		then click Create
 		you will be taken to the "View Model" tab, if successful. Otherwise, check terminal for errors.
 
-EXAMPLE - LOAD EXISTING PROTOCOL MODEL
+### LOAD EXISTING PROTOCOL MODEL
 
 	In "Model Generation" tab:
 		use the dropdown to browse existing protcols.  Find "ICMP" if you ran last example.
 		then click Load
 		you will be taken to the "View Model" tab.
 
-EXAMPLE - VIEW PROTOCOL MODEL INSTANCE
+### VIEW PROTOCOL MODEL INSTANCE
 
 	Once in "View Model" tab (get here from previous Create or Load):
 		Use "Select Model" to select one of the protocol's variants (keyed off of the "keyword" earlier)
@@ -47,7 +52,7 @@ EXAMPLE - VIEW PROTOCOL MODEL INSTANCE
 		Click "View" to see what its default values look like in scapy
 		Click "Edit" to manipulate those values, which takes you to the "Edit Model" tab
 
-EXAMPLE - EDIT PROTOCOL MODEL INSTANCE
+### EDIT PROTOCOL MODEL INSTANCE
 
 	Using "icmp_example"...
 	Open Wireshark, and set it to listen (on "any" interface)...
@@ -70,7 +75,7 @@ EXAMPLE - EDIT PROTOCOL MODEL INSTANCE
 		click "Send" to send the ICMP request
 		use Wireshark to see that the request was sent (and hopefully the response to it)
 
-EXAMPLE - EDIT PROTOCOL MODEL CLASS
+### EDIT PROTOCOL MODEL CLASS
 
 	Using "whb_icmp"...
 	In "Edit Model" tab:
@@ -95,7 +100,7 @@ EXAMPLE - EDIT PROTOCOL MODEL CLASS
 		Notice icmp_code_35 ignores whether it is set to None, which can make it dangerous, and is an example of what not to do!
 
 
-QUESTIONS
+## QUESTIONS
 
 	What is a good way for user to know what values of "Keyword" are valid/useful?
 	

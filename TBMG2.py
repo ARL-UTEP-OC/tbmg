@@ -1,10 +1,10 @@
 #!/usr/bin/python2
 from Tkinter import *
-from tkFileDialog import askopenfilename
 import tkMessageBox
 from jinja2 import Template
 from io import BytesIO
 import ttk
+from ttk import *
 import time
 import os
 import subprocess
@@ -18,6 +18,8 @@ from StringIO import StringIO
 from collections import OrderedDict
 from scapyCustomizerTBMG import scapyCustomizerTBMG
 import predictor.gui
+from lib.helpers import *
+from pdmlExtractor.pdmlExtractor import extractPDML
 
 class Application(Frame):
     def __init__(self, master):
@@ -27,50 +29,31 @@ class Application(Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        self.protocol = Label(page1, text = "Protocol Name:")
-        self.protocol.grid(row = 1, column = 0,  sticky = W)
-        self.proto = Entry(page1)
-        self.proto.grid(row = 1, column = 1,  sticky = W)
-
-
-        self.pcapFile = Label(page1, text="Pcap File Path:")
-        self.pcapFile.grid(row=2, column=0, sticky=W)
-        self.pcapText = StringVar()
-        self.pcap = Entry(page1, textvariable = self.pcapText)
-        self.pcap.grid(row=2, column=1, sticky=W)
-        self.choosePcap = Button(page1, text="Choose File", command=self.getPcapName)
-        self.choosePcap.grid(row=2, column=2, sticky=W)
-
-        self.dissectorFile = Label(page1, text="Dissector Name: (Optional)")
-        self.dissectorFile.grid(row=3, column=0, sticky=W)
-        self.dissectorText = StringVar()
-        self.dissector = Entry(page1, textvariable=self.dissectorText)
-        self.dissector.grid(row=3, column=1, sticky=W)
-        self.chooseDissect = Button(page1, text="Choose File", command=self.getDissName)
-        self.chooseDissect.grid(row=3, column=2, sticky=W)
-
-        self.keyword = Label(page1, text="Keyword:")
-        self.keyword.grid(row=4, column=0, sticky=W)
-        self.key = Entry(page1)
-        self.key.grid(row=4, column=1, sticky=W)
-
-        self.modelName = Label(page1, text="Model-Name:")
-        self.modelName.grid(row=5, column=0, sticky=W)
-        self.model = Entry(page1)
-        self.model.grid(row=5, column=1, sticky=W)
-
-        self.createButton = Button(page1, text = "Create", command = self.create)
-        self.createButton.grid(row = 10, column = 0, sticky = W)
-        
+		
+        p1row = ATK_InitRowCounter()
+        col = 0
+		
         self.protnames = [x for x in os.listdir("./models") if ("__init__.py" not in x)]
         self.existingName = Label(page1, text="Use Existing:")
-        self.existingName.grid(row=11, column = 0, sticky = W)
+        self.existingName.grid(row=p1row.get(), column = col+1, sticky = W)
         self.existingvar = StringVar(page1)
         self.existingvar.set("Select Model...")
         self.existing = OptionMenu(page1, self.existingvar, self.existingvar.get(), *sorted(self.protnames))
-        self.existing.grid(row=11,column=1,sticky=W)
+        self.existing.grid(row=p1row.get(),column=col+2,sticky=W)
         self.existingButton = Button(page1, text = "Load", command = self.loadexisting)
-        self.existingButton.grid(row=11,column=2,sticky=W)
+        self.existingButton.grid(row=p1row.get(),column=col+3,sticky=W)
+        ATK_IncrementRowCounter(p1row)
+        
+        ATK_HR(page1,p1row,col) 
+        ATK_Label(page1,p1row,col,"Create New Model")
+        self.pcap = ATK_FileSelect(page1,p1row,col,"Pcap File Path",{"initialdir":"sampleConfigs/captures"},"The PCAP file to be used to generate the model, and its state machines")
+        ATK_ButtonAlone(page1,p1row,col,"Open in WireShark",(lambda f=self.pcap: subprocess.Popen(["wireshark",f.get()])),"Open the selected PCAP in WireShark.  If no file is selected yet, this will just open WireShark.  This is useful for determining the Protocol and Keyword values")
+        self.dissector = ATK_FileSelect(page1,p1row,col,"Dissector (Optional)",{"initialdir":"dissectors/"},"If not using a dissector that WireShark/TShark already knows, select the appropriate LUA script here")
+        ATK_ButtonAlone(page1,p1row,col,"Test and View PDML",self.quicktest,"Try PDML conversion of the PCAP, and view the results. Useful for determining the Protocol and Keyword.  For example:\n\nRunning against 'dhcp.pcap' line 349 shows:\n"+'<field name="bootp.type" showname="Message type: Boot Request (1)" size="1" pos="42" show="1" value="01"/>'+"\n\nThus, the Protocol is 'bootp' and the Keyword is 'Message type'\n\nThe Protocol can also be seen on line 348.\n\nThe Keyword is whatever is before the :")
+        self.proto = ATK_TextField(page1,p1row,col,"Protocol Name","","Which protocol to extract from the PCAP data")
+        self.key = ATK_TextField(page1,p1row,col,"Keyword","","What field to pivot off of.  Each different value of this key field will result in a different model being generated.")
+        self.model = ATK_TextField(page1,p1row,col,"Model-Name","","What to name your new model class.  This does not need to be the same as the Protocol.")
+        self.createButton = ATK_ButtonAlone(page1,p1row,col,"Create",self.create,"Start the process of creating a model from the above settings")
         
         self.newName = Label(page4, text="Protocol-Name:")
         self.newName.grid(row = 1, column=0, sticky=W)
@@ -100,7 +83,7 @@ class Application(Frame):
         
         #############################################################
         self.line2 = ttk.Separator(page4, orient= HORIZONTAL)
-        self.line2.grid(row =7, columnspan = 20, sticky='ew', pady = 5)
+        self.line2.grid(row =7, columnspan = 20, sticky='ew', pady=5)
         ###########################################################
         
     def grabTransport(self):  #grabbing the values entered by user for the dissector table
@@ -165,6 +148,22 @@ class Application(Frame):
 			fieldbox.grid(row=5,column=1,sticky=W)
 			
 			fieldbox.bind("<<ComboboxSelected>>", getdesc)
+
+    def quicktest(self):
+		pcap = self.pcap.get()
+		dissector = self.dissector.get()
+		proto = self.proto.get()
+		
+		testfile = "/tmp/quicktest.pdml"
+		cmd = "/usr/bin/tshark -r " + pcap + " -T pdml"
+		if dissector is not None and dissector.strip() != "":
+			cmd = cmd + " -X lua_script:" + dissector
+		cmd = cmd + " > " + testfile
+		print "\n\n","*"*60,"\n| convert PCAP to PDML\n",cmd,"\n","*"*60,"\n\n"
+		subprocess.call(cmd, shell=True)
+		
+		subprocess.Popen(["gedit",testfile])
+		
 
     def create(self):	
 		proto = self.proto.get()
@@ -331,15 +330,6 @@ class Application(Frame):
             # self.port.grid_forget()
             # hidden = True
         # print hidden
-
-    def getPcapName(self):
-        pcapname = askopenfilename(initialdir="sampleConfigs/captures")
-        self.pcapText.set(pcapname)
-
-    def getDissName(self):
-        dissectorName = askopenfilename(initialdir="dissectors/")
-        self.dissectorText.set(dissectorName)
-        
 	
 
 def runtbmg(proto, modelname):
@@ -361,7 +351,8 @@ def popupmsg(msg):
 			popup.destroy()
 		popup.wm_title("Message")
 		label = ttk.Label(popup, text = msg)
-		label.pack(side="top", pady=10)
+		# label.pack(side="top", pady=10)
+		label.pack(side="top")
 		B1 = ttk.Button(popup, text="Okay", command = closepopup)
 		B1.pack()
 		popup.mainloop()
@@ -387,16 +378,16 @@ def displayModels(modelname):
 	#show the created protocols
 	for model in models:
 		if model != "__init__.py" and model != modelname+"Client.py" and model[-3:] == '.py':
-			pickModel = Radiobutton(page2, text=model[:-3], padx = 20, variable = modelChosen, value = model)
-			pickModel.grid(sticky = "W")
+			pickModel = Radiobutton(page2, text=model[:-3], variable = modelChosen, value = model)
+			pickModel.grid(sticky = "W", padx=20)
 	createLabel = Label(page2, text="Create:", font = "bold")
 	createLabel.grid(sticky = "W")
-	tcp = Radiobutton(page2, text="TCP", padx = 20, value = "TCP", variable = connectChosen)
-	tcp.grid(sticky = "W")
-	udp = Radiobutton(page2, text="UDP", padx = 20, value = "UDP", variable = connectChosen)
-	udp.grid(sticky = "W")
-	raw = Radiobutton(page2, text="RAW", padx = 20, value = "RAW", variable = connectChosen)
-	raw.grid(sticky = "W")
+	tcp = Radiobutton(page2, text="TCP", value = "TCP", variable = connectChosen)
+	tcp.grid(sticky = "W", padx=20)
+	udp = Radiobutton(page2, text="UDP", value = "UDP", variable = connectChosen)
+	udp.grid(sticky = "W", padx=20)
+	raw = Radiobutton(page2, text="RAW", value = "RAW", variable = connectChosen)
+	raw.grid(sticky = "W", padx=20)
 	
 	viewButton = Button(page2, text = "View", command = lambda: showmodeldata(modelname, modelChosen.get(), connectChosen.get()))
 	viewButton.grid()
@@ -454,22 +445,25 @@ def makeFieldObjects(packet,basemodelname):
 				#print field_value
 				if field_value == None:
 					field_value = "None"
-					
+				
 				hasedits = (editor.hasedits(fdesc.name) if editor is not None else False)
 					
 				fieldob = fieldObj(fdesc.name, field_value, lyr)
 				fieldob.setTKName(Label(page3,text=fdesc.name))
 				default_value = StringVar(page3, value=field_value)
-				
-				fieldob.setTKValue(Entry(page3, textvariable=default_value))
-				fieldob.setTKfieldNoneBTN(Button(page3, text='N', padx=0,pady=0, command=lambda fo=fieldob: updateGuiFields(fo,None) ))
-				fieldob.setTKfieldDefaultBTN(Button(page3, text='D', padx=0,pady=0, command=lambda fo=fieldob,fv=field_value: updateGuiFields(fo,fv)  ))
+				print "fdesc, ",fdesc.name,": ",field_value,", ",default_value.get()
+				newentry = Entry(page3)
+				newentry.insert(0,str(field_value))
+				fieldob.setTKValue(newentry)
+				fieldob.setTKfieldNoneBTN(Button(page3, text='N', width=2, command=lambda fo=fieldob: updateGuiFields(fo,None) ))
+				fieldob.setTKfieldDefaultBTN(Button(page3, text='D', width=2, command=lambda fo=fieldob,fv=field_value: updateGuiFields(fo,fv)  ))
 				fieldob.setTKSynth(Entry(page3, state="readonly"))
 				if (lyr == 'TCP' or lyr == 'UDP' or lyr == 'IP'):
 					fieldob.setTKAdvEditBTN(Label(page3,text=""))
 				else:
-					btnedit = Button(page3,text="Edit",pady=0,command=lambda fob=fieldob,b=basemodelname:AdvEdit(fob,b))
-					btnedit.config(background=(BTNEditedBG if hasedits else BTNNotEditedBG))
+					btnedit = Button(page3,text="Edit",command=lambda fob=fieldob,b=basemodelname:AdvEdit(fob,b))
+					# btnedit.config(background=(BTNEditedBG if hasedits else BTNNotEditedBG))
+					btnedit.config(text=("Edit*" if hasedits else "Edit"))
 					fieldob.setTKAdvEditBTN(btnedit)
 				#print "field objects made"
 				#fieldob.toString()
@@ -522,8 +516,7 @@ def AdvEdit(fieldob,basemodelname):
 		options['_AFTER']['_var'] = StringVar()
 		options['_AFTER']['_var'].set(edits['AFTER'])
 		options['_AFTER']['_field'] = OptionMenu(valuepanel,options['_AFTER']['_var'],*(options['_AFTER']['source']))
-		options['_AFTER']['_field'].configure(pady=0)
-		options['_AFTER']['_field'].grid(row=vprow,column=1,sticky=W)
+		options['_AFTER']['_field'].grid(row=vprow,column=1,sticky=W,pady=0)
 		vprow += 1
 
 	options["_chosen"] = StringVar()
@@ -546,8 +539,8 @@ def AdvEdit(fieldob,basemodelname):
 		vprow += 1
 
 		orow = 0
-		options[i]['_help'] = Button(options[i]['_frame'],text='?',pady=0,command=lambda t=i,h=options[i]['help']:alertpop(t,h))
-		options[i]['_help'].grid(row=orow,column=0,sticky=W)
+		options[i]['_help'] = Button(options[i]['_frame'],text='?',width=2,command=lambda t=i,h=options[i]['help']:alertpop(t,h))
+		options[i]['_help'].grid(row=orow,column=0,sticky=W,pady=0)
 		options[i]['_helplabel'] = Label(options[i]['_frame'],text='About '+i)
 		options[i]['_helplabel'].grid(row=orow,column=1,sticky=W)
 		orow += 1
@@ -559,8 +552,8 @@ def AdvEdit(fieldob,basemodelname):
 			options[i][o]['_label'].grid(row=orow,column=1,sticky=W)
 			
 			if 'help' in options[i][o]:
-				options[i][o]['_help'] = Button(options[i]['_frame'],text='?',pady=0,command=lambda t=i+" "+options[i][o]['title'],h=options[i][o]['help']:alertpop(t,h))
-				options[i][o]['_help'].grid(row=orow,column=0)
+				options[i][o]['_help'] = Button(options[i]['_frame'],text='?',width=2,command=lambda t=i+" "+options[i][o]['title'],h=options[i][o]['help']:alertpop(t,h))
+				options[i][o]['_help'].grid(row=orow,column=0,pady=0)
 			
 			value = str(""+str(options[i][o]['default']))
 			if edit_args[0] == i:
@@ -575,8 +568,7 @@ def AdvEdit(fieldob,basemodelname):
 				options[i][o]['_selvar'] = StringVar()
 				options[i][o]['_selvar'].set(value)
 				options[i][o]['_field'] = OptionMenu(options[i]['_frame'],options[i][o]['_selvar'],options[i][o]['_selvar'].get(),*(options[i][o]['source']))
-				options[i][o]['_field'].configure(pady=0)
-				options[i][o]['_field'].grid(row=orow,column=2,sticky=W)
+				options[i][o]['_field'].grid(row=orow,column=2,sticky=W,pady=0)
 				options[i][o]['_get'] = lambda v=options[i][o]['_selvar']: v.get()
 				orow += 1
 			elif options[i][o]['type'] == 'textarea':
@@ -738,8 +730,9 @@ def modifymodeldata(name, modeltype, connecttype):
 			editor = scapyCustomizerTBMG.scapyCustomizerTBMG(os.path.join("models",name,"scapy","model",layer+".py"))
 			fakefieldob = fieldObj('_GENERAL_',0,layer)
 			genedit = Button(page3,text="Edit",command=lambda fb=fakefieldob,b=name: AdvEdit(fb,b) )
-			genedit.configure(pady=0,background=(BTNEditedBG if editor.hasedits("_GENERAL_") else BTNNotEditedBG))
-			genedit.grid(row=rowcount,column=-1+protoffset,sticky=E)
+			# genedit.configure(background=(BTNEditedBG if editor.hasedits("_GENERAL_") else BTNNotEditedBG))
+			genedit.configure(text=("Edit*" if editor.hasedits("_GENERAL_") else "Edit"))
+			genedit.grid(row=rowcount,column=-1+protoffset,sticky=E,pady=0)
 			fakefieldob.setTKAdvEditBTN(genedit)
 		layerLabel = Label(page3,text="     "+layer+"     ", font = "bold")
 		layerLabel.grid(row=rowcount, column = 0+protoffset, sticky=W )
@@ -747,12 +740,13 @@ def modifymodeldata(name, modeltype, connecttype):
 		rowcount += 1
 		for field in fieldObjectsArray:
 			if field.layer==layer:
+				print field
 				field.TKfieldName.grid( row=rowcount, column = 0+protoffset, sticky=W)
 				field.TKfieldValue.grid(row=rowcount, column = 1+protoffset, sticky=W)
-				field.TKfieldNoneBTN.grid(row=rowcount,column= 2+protoffset, sticky=W)
-				field.TKfieldDefaultBTN.grid(row=rowcount,column=3+protoffset,sticky=W)
+				field.TKfieldNoneBTN.grid(row=rowcount,column= 2+protoffset, sticky=W, padx=0, pady=0)
+				field.TKfieldDefaultBTN.grid(row=rowcount,column=3+protoffset,sticky=W,padx=0, pady=0)
 				field.TKfieldSynth.grid(row=rowcount, column = 4+protoffset, sticky=W)
-				field.TKAdvEditBTN.grid(row=rowcount, column = -1+protoffset, sticky=E)
+				field.TKAdvEditBTN.grid(row=rowcount, column = -1+protoffset, sticky=E,        pady=0)
 				rowcount += 1
 				
 	buttonsRoffset = 1 #rowcount
@@ -887,7 +881,8 @@ def autoScrape(packet):  #writes sent values to the readonly GUI elements
 		field.TKfieldSynth.config(state=NORMAL)
 		field.TKfieldSynth.delete(0,END)
 		field.TKfieldSynth.insert(0,resval)
-		field.TKfieldSynth.config(state="readonly",readonlybackground=(SynthMatchBG if same else SynthDiffBG))
+		# field.TKfieldSynth.config(readonlybackground=(SynthMatchBG if same else SynthDiffBG))
+		field.TKfieldSynth.config(state="readonly")
 		
 
 def PacketScraper(packet):  #creates an associative collection of values from the packet

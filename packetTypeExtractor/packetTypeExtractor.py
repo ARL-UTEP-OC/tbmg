@@ -9,11 +9,9 @@ def extractPacketType(modelName, keyword):
 
     outputSequenceFilename = os.path.join("models",modelName,'packetTypeSequences.txt')
     outputPacketsTypesFilename = os.path.join("models",modelName,'packetsTypes.xml')
-    type_specified = False
     if keyword != None:
-        TYPE_IDENTIFIERS = keyword
-        print "KEYWORD WAS SPECIFIED AS: " + TYPE_IDENTIFIERS
-        type_specified = True
+        TYPE_IDENTIFIERS = [ keyword ]
+        print "KEYWORD WAS SPECIFIED AS: ",TYPE_IDENTIFIERS
     else:
         TYPE_IDENTIFIERS = ["Flags", "Type", "type", "Message Type", "message type", "Command", "command", "GET", "POST",
                             "NOTIFY", "Message"]
@@ -32,57 +30,56 @@ def extractPacketType(modelName, keyword):
     # iterate through each packet:
     for packetXML in soup.find_all('packet'):
         # iterate through each field in the packet
-        count = 0
         foundType = False
         for fieldXML in packetXML.find_all('field'):
             # check if the current field is a type specifier
             # -----------------Adding a flag to see if the actual type was found in the packet
-            if type_specified:
-                print "*****************************************"  # +str(count)+"\n" + fieldXML.mshowname.contents[0].split(' ')[1];
-                count += 1
-                # print "!!!Showname!!" + fieldXML.mshowname.contents[0].split(':')[0]
-                try:
-                    if (fieldXML.mshowname.contents[0].split(':')[0] == TYPE_IDENTIFIERS) or \
-                            (fieldXML.mshowname.contents[0].split(' ')[1] == TYPE_IDENTIFIERS):
-                        foundType = True
-                except IndexError:  # no more fields
-                    break
-
-            else:
-                try:
-                    if (fieldXML.mshowname.contents[0].split(':')[0] in TYPE_IDENTIFIERS):
-                        foundType = True
-
-                except IndexError:  # no more fields
-                    break
-            if foundType:
-                # TODO: currently only one field can determine the uniqueness of a field type, will change this later
-                nodeid = packetXML['nodeuniq']
-                # Here check if the unmasked value exists (this means that
-                # the value is likely not byte-aligned, so we need to take
-                # the aligned value (given in the unmaskedvalue tag
-                print "found type"
-                print fieldXML.mshowname.contents[0]
-                if fieldXML.munmaskedvalue.contents:
-                    # print fieldXML.mname.contents[0],fieldXML.munmaskedvalue.contents[0];
-                    typeid = fieldXML.mname.contents[0] + "=" + fieldXML.munmaskedvalue.contents[0]
-                else:
-                    typeid = fieldXML.mname.contents[0] + "=" + fieldXML.mvalue.contents[0]
-                dataItem = (nodeid, typeid)
-                # store in type mappings if it is not there yet:
-                print dataItem
-                if dataItem not in typeMappings:
-                    # give this new item an identifier (current number of elements in the array)
-                    typeMappings[dataItem] = len(typeMappings)
-                    print "insert"
-                typeSequences.append(typeMappings[dataItem])
-                # also add the type number to the original trace
-                packetXML.attrs['type'] = typeMappings[dataItem]
-                packetXML.attrs['typeuniq'] = typeid
-                # ------------------------Added this break so that once found it will stop checking the rest of the packet
-                # --------------------------This is where we can continue to check if we want to take another field
-                # --------------------------in to consideration.
+            
+            fullType = fieldXML.mshowname.contents[0].strip()
+            typeSplitA = fullType.split(':')[0]
+            typeSplitB = fullType.split(' ')[1]
+            
+            print "Looking at... '"+fullType+"', '"+typeSplitA+"', '"+typeSplitB+"'"
+            
+            try:
+                if typeSplitA in TYPE_IDENTIFIERS:
+                    foundType = True
+                if typeSplitB in TYPE_IDENTIFIERS:
+                    foundType = True
+                if fullType in TYPE_IDENTIFIERS:
+                    foundType = True
+            except IndexError: #no more fields
                 break
+            
+            if not foundType:
+                continue
+                
+            # TODO: currently only one field can determine the uniqueness of a field type, will change this later
+            nodeid = packetXML['nodeuniq']
+            # Here check if the unmasked value exists (this means that
+            # the value is likely not byte-aligned, so we need to take
+            # the aligned value (given in the unmaskedvalue tag
+            print "!!!!!!!!!!! found type",fullType
+            if fieldXML.munmaskedvalue.contents:
+                # print fieldXML.mname.contents[0],fieldXML.munmaskedvalue.contents[0];
+                typeid = fullType + "=" + fieldXML.munmaskedvalue.contents[0]
+            else:
+                typeid = fullType + "=" + fieldXML.mvalue.contents[0]
+            dataItem = (nodeid, typeid)
+            # store in type mappings if it is not there yet:
+            print dataItem
+            if dataItem not in typeMappings:
+                # give this new item an identifier (current number of elements in the array)
+                typeMappings[dataItem] = len(typeMappings)
+                print "insert"
+            typeSequences.append(typeMappings[dataItem])
+            # also add the type number to the original trace
+            packetXML.attrs['type'] = typeMappings[dataItem]
+            packetXML.attrs['typeuniq'] = typeid
+            # ------------------------Added this break so that once found it will stop checking the rest of the packet
+            # --------------------------This is where we can continue to check if we want to take another field
+            # --------------------------in to consideration.
+            break
 
     # -------------output section------------------------#
     # print an error statement if no types were found:
@@ -120,16 +117,16 @@ def extractPacketType(modelName, keyword):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print "usage: packetTypeExtractory.py <config file>"
-        # print "<input file>"
-        # print " -a file containing field data (produced by pdmlExtractor.py)\n"
-        # print "<model name>"
-        # print " -a file containing field data (produced by pdmlExtractor.py)\n"
+    if len(sys.argv) != 3:
+        print "usage: packetTypeExtractory.py <modelname> <keyword>"
+        print "<modelname>"
+        print " -the directory in 'models' that has 'packets.xml'\n"
+        print "<keyword>"
+        print " -the field that will be pivoted on\n"
         print "This program creates two files: "
         print "packetTypeSequences.txt"
         print " -this file contains the observed packet type sequences in the input file"
         print "packetTypeMapping.xml"
         print " -this file contains the mappings from numerical packet types to the unique values used as identify a unique packet type"
         sys.exit(-1)
-    extractPacketType(sys.argv[1])
+    extractPacketType(sys.argv[1],sys.argv[2])

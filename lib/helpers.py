@@ -50,9 +50,8 @@ def AlertPop(title,msg):
 	print " "
 	tkMessageBox.showinfo(title,msg)
 def HelperBTN(par, row, col, title, msg):
-	# nb = ttk.Button(par,text='?',pady=0,command=lambda t=title,h=msg: AlertPop(t,h))
 	nb = ttk.Button(par,text='?',width=2,command=lambda t=title,h=msg: AlertPop(t,h))
-	nb.grid(row=row,column=col)
+	nb.grid(row=row,column=col,pady=0,padx=0)
 	
 def KWARGSValidate(sent,define):
 	problems = ""
@@ -118,7 +117,7 @@ def ATK_TextArea(parent,rowVar,col,label="",value="",width=30,height=8,helper=""
 	if helper <> "" or label <> "":
 		ATK_Label(parent,rowVar,col,label,helper)
 	newtxt = Text(parent,width=width,height=height,wrap=NONE)
-	newtxt.grid(row=rowVar.get(),column=0,columnspan=4,sticky="EW")
+	newtxt.grid(row=rowVar.get(),column=col+0,columnspan=4,sticky="EW")
 	newtxt.insert(END,str(value))
 	newtxt.str = lambda: newtxt.get(1.0,END)
 	ATK_ScrollAttach(parent,rowVar,col,newtxt)
@@ -155,7 +154,8 @@ def ATK_ButtonSingle(parent,rowVar,col,label,btnwords,callback,helper=""):
 	return newbtn
 def ATK_ButtonAlone(parent,rowVar,col,btnwords,callback,helper=""):
 	if helper <> "":
-		HelperBTN(parent,rowVar.get(),col,label,helper)
+		HelperBTN(parent,rowVar.get(),col,btnwords,helper)
+		col = col + 1
 	newbtn = Button(parent,text=btnwords,command=callback)
 	newbtn.grid(row=rowVar.get(),column=col,columnspan=4,sticky="EW")
 	ATK_IncrementRowCounter(rowVar,1)

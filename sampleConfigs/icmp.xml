@@ -3,8 +3,12 @@
         <proto-name>
             icmp
         </proto-name>
+		<dissector-filename>
+		<!-- Optional: This must exist in the dissector directory specified in settings.py -->
+			
+		</dissector-filename>
         <path-to-pcap>
-            sampleConfigs/captures/10secs.pcap
+            /rez/tbmg/sampleConfigs/captures/10secs.pcap
         </path-to-pcap>
         <keyword>
             Type
@@ -23,17 +27,17 @@
             </layer>
         </extracted-fields>
     </model-basis>
-    
+
     <model-generation>
         <model-name>
-            scapytest
+            icmp3
         </model-name>
         <network-layer>
 			IPv4
 		</network-layer>
 		<transport-layer/>
     </model-generation>
-    
+
     <scenario-generation>
         <remote-ip>
             10.0.0.3
