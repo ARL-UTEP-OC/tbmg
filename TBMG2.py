@@ -902,8 +902,9 @@ def PacketScraper(packet):  #creates an associative collection of values from th
 			layer = line[5:-5].strip()
 			asobj[layer] = OrderedDict()
 			continue
-		if "=" not in line:
+		if " = " not in line:
 			continue
+		print "scraping line: ",line
 		field,value = line.split(" = ",1)
 		field = field.strip()
 		asobj[layer][field] = value
