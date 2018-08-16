@@ -7,6 +7,7 @@ import ttk, tkMessageBox
 from tkFileDialog import askopenfilename
 import random
 import datetime
+import threading
 
 # functions for dealing with bubbling up errors (see helpers.lib.php for parallels)
 loggederrors = []
@@ -180,25 +181,41 @@ def ATK_FileSelect(parent,rowVar,col,label,askargs,helper=""):
 def ATK_ScrollAttach(parent,rowVar,col,target):
 	scrollX = Scrollbar(parent,command=target.xview,orient=HORIZONTAL)
 	scrollY = Scrollbar(parent,command=target.yview,orient=VERTICAL)
+	#sgrip = Sizegrip(parent)  #resizes the root window... hopefully find a way to resize the target instead
 	target.config(xscrollcommand=scrollX.set)
 	target.config(yscrollcommand=scrollY.set)
 	scrollX.grid(row=rowVar.get()+1,column=col,sticky="EWN",columnspan=4)
 	scrollY.grid(row=rowVar.get(),column=col+4,sticky="NSw",rowspan=1)
+	#sgrip.grid(row=rowVar.get()+1,column=col+4,sticky="NEWS")
 	return True
 def ATK_ScrollFrame(parent,rowVar,col,widthpx,heightpx):
-	newcanvas = Canvas(parent,width=widthpx,height=heightpx,bg='red')
-	newcanvas.grid(row=rowVar.get(),column=col,columnspan=4)
-	ATK_ScrollAttach(parent,rowVar,col,newcanvas)
 	
-	#TODO: this doesn't actually work... problem is probably here abouts
-	# newframe = Frame(width=widthpx)
-	newframe = Frame(newcanvas,width=widthpx)
-	newcanvas.create_window(0,0,anchor="nw",window=newframe)
-	# newframe.grid(row=0,column=0)
-	# newcanvas.config(scrollregion=newcanvas.bbox("all"))
+	newframe = Frame(parent,width=widthpx,height=heightpx)
+	newframe.grid(row=rowVar.get(),column=col,columnspan=5)
 	
-	ATK_IncrementRowCounter(rowVar,2)
-	return newframe
+	nfrow = ATK_InitRowCounter()
+
+	newcanvas = Canvas(newframe,bg='#99aa99')
+	newcanvas.config(width=widthpx,height=heightpx)
+	newcanvas.config(scrollregion=(0,0,2*widthpx,2*heightpx))
+	newcanvas.grid(row=nfrow.get(),column=0)
+	ATK_ScrollAttach(newframe,nfrow,0,newcanvas)
+	
+	insideframe = Frame(newcanvas)
+	insideframe.grid(row=0,column=0)
+	newcanvas.create_window(0,0,anchor="nw",window=insideframe)
+
+	_ATK_ScrollResizer(newcanvas,insideframe)
+	
+	ATK_IncrementRowCounter(rowVar,1)
+	
+	return insideframe
+def _ATK_ScrollResizer(canvas,frame):
+	try:
+		canvas.config(scrollregion=frame.bbox("all"))
+	except: #occurs when the canvas & frame cease to exist, so a new threading.Timer fails to get created
+		return
+	threading.Timer(1,_ATK_ScrollResizer,[canvas,frame]).start()
 def ATK_SubFrame(parent,rowVar,col,label="",helper=""):
 	if helper <> "" or label <> "":
 		if helper <> "":

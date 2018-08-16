@@ -395,6 +395,7 @@ def displayModels(modelname):
 	editButton = Button(page2, text = "Edit", command = lambda: modifymodeldata(modelname, modelChosen.get(), connectChosen.get()))
 	editButton.grid()
 
+	nb.tab(page2,state=NORMAL)
 	nb.select(page2)
 	
 	#self.tcp = BooleanVar()
@@ -647,7 +648,7 @@ def SaveAdvEdit(fieldob,basemodelname,options):
 	CloseAdvEdit()
 
 def CloseAdvEdit():
-	nb.select(page3)
+	nb.select(page3t)
 	nb.tab(page3_5,state=DISABLED)	
 
 def ReloadProtocol(protoname):
@@ -780,7 +781,8 @@ def modifymodeldata(name, modeltype, connecttype):
 		mantcp.grid(row=TCProwOffset+5, column=0+buttonsCoffset, sticky=W)
 		etcpButton = Button(ButtonsPanelTCP, text = "End TCP Handshake", command = closeTCP)
 		etcpButton.grid(row=TCProwOffset+6,column=0+buttonsCoffset, sticky=W)
-	nb.select(page3)
+	nb.tab(page3t,state=NORMAL)	
+	nb.select(page3t)
 
 	for w in pagePredict.grid_slaves():
 		w.destroy()
@@ -1098,10 +1100,11 @@ nb.add(page1, text='Model Generation')
 
 # Adds tab 2 of the notebook
 page2 = ttk.Frame(nb)
-nb.add(page2, text='View Model')
+nb.add(page2, text='View Model', state=DISABLED)
 
-page3 = ttk.Frame(nb)
-nb.add(page3, text='Edit Model')
+page3t = ttk.Frame(nb)
+nb.add(page3t, text='Edit Model', state=DISABLED)
+page3 = ATK_ScrollFrame(page3t,ATK_InitRowCounter(),0,800,600)
 
 page3_5 = ttk.Frame(nb)
 nb.add(page3_5, text='Adv. Field', state=DISABLED)
