@@ -133,11 +133,11 @@ class ScapyBridge(object):
         im_the_dst = bool(str(pkt['ARP'].hwdst) in self.tbmg.macs)
         if not self.is_outgoing:
             if im_the_dst:
-                t = Thread(target=self.callback, args=(raw(pkt),None,None,None))
+                t = Thread(target=self.callback, args=(raw(pkt), None, None, None, raw(pkt)))
                 t.setDaemon(True)
                 t.start()
         elif not im_the_dst:
-            t = Thread(target=self.callback, args=(raw(pkt), None, None, None))
+            t = Thread(target=self.callback, args=(raw(pkt), None, None, None, raw(pkt)))
             t.setDaemon(True)
             t.start()
     
@@ -762,7 +762,7 @@ class ScapyBridge(object):
         
 
     # ran from seperate process
-    def callback(self, ll_data, ll_proto_id, data, ctx):
+    def callback(self, ll_data, ll_proto_id, data, ctx, arp=None):
         # Here is where the magic happens.
         def skipAhead(dst_num):
             print 'SKIIIIIIIIIIIIIIIIIP!!!!!!!!!! to ', str(dst_num)
@@ -779,16 +779,22 @@ class ScapyBridge(object):
             num = self.pack_num_counter
             self.pack_num_counter +=1 # may need to make this thread safe
             #TODO handle protos other than ether and IP T-T eg CookedLinux and maybe IPv6
-            '''
             hex_text = ''
-            if ll_data:
+            if arp:
+                packet = Ether(arp)
+            elif ll_data:
                 hex_text = str(ll_data).encode('hex')
                 if data:
                     hex_text = hex_text + str(data).encode('hex')
                 print 'data   :', ll_data, data
                 print 'encoded:', hex_text
                 packet = self.hexToPacket(hex_text)
+                print'done dissect:'
+                packet.show2()
+                print'would have got:'
+                (Ether(ll_data) / IP(data)).show2()
             else:
+                print 'no ll_data'
                 if data:
                     packet = Ether(ll_data) / IP(data)
                 else:
@@ -800,9 +806,8 @@ class ScapyBridge(object):
             else:
                 packet = Ether(ll_data)
                 org = Ether(ll_data)
-                
-            print'done dissect:'
-            packet.show2()
+            '''
+            
             #if data:
                 #print ('want to use hex:', str(ll_data).encode('hex') + str(data).encode('hex'))
                 #packet = self.hexToPacket(str(ll_data).encode('hex') + str(data).encode('hex'))

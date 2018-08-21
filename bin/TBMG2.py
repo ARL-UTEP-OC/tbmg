@@ -1542,7 +1542,7 @@ class AutoresizedNotebookChild(ttk.Notebook):
     def _on_tab_changed(self, event):
         global root_widgit
         #TODO handle resize height on tab change!!!!!
-        #global application
+        #global applicationAutoresizedNotebookChild
         print (dir(self))
         #if application:
         #    print application
