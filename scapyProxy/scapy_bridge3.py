@@ -28,14 +28,12 @@ class ScapyBridge(object):
         #self.iptablesr = 'iptables -I INPUT 1 -j NFQUEUE --queue-balance 0:2'
         
         self.is_outgoing = is_outgoing_
-        self.iptablesr = ''
-        if self.is_outgoing:
-            self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:19; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:19'
-            self.gui_layersPCAP = {}  # only in sender!!!
-        else:
-            self.iptablesr = 'iptables -I INPUT 1 -j NFQUEUE --queue-balance 20:39'
-        
         self.tbmg = tbmg_
+        if self.is_outgoing:
+            self.gui_layersPCAP = {}  # only in sender!!!
+        self.iptablesr = ''
+        self.iptablesr_nat = ''
+        self.defineIptableRules()
         self.q = None
         self.status = False
         self.cleanup = False
@@ -61,7 +59,20 @@ class ScapyBridge(object):
         self.arp_sniff_thread.setDaemon(True)
         self.proto_colors = {}
         self.loadSettings()
-        
+
+    def defineIptableRules(self):
+        if self.is_outgoing:
+            self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:19; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:19'
+            self.iptablesr_nat = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:19 -t nat; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:19 -t nat'
+        else:
+            self.iptablesr = 'iptables -I INPUT 1 -j NFQUEUE --queue-balance 20:39'
+            self.iptablesr_nat = 'iptables -I INPUT 1 -j NFQUEUE --queue-balance 20:39 -t nat'
+        if self.tbmg.iptables_interface:
+            self.iptablesr = self.iptablesr + ' -i ' + self.tbmg.iptables_interface
+            self.iptablesr_nat = self.iptablesr_nat + ' -i ' + self.tbmg.iptables_interface
+
+        print 'refreshed rules to:',self.iptablesr
+
     def loadSettings(self):
         self.proto_colors ={}
         color_config = open('/root/tbmg/scapyProxy/color_config.csv', 'r')
@@ -678,7 +689,11 @@ class ScapyBridge(object):
     def setIPTables(self):
         print("Adding iptable rules :", self.iptablesr)
         os.system(self.iptablesr)
-        
+        os.system(self.iptablesr_nat)
+
+    def myTCPdump(self):
+        os.system('tcpdump -c 500 -w ' + self.pcapfile)
+
     def proxyToggle(self):
         #print(not self.status)
         self.status = not self.status
@@ -692,6 +707,11 @@ class ScapyBridge(object):
                     self.arp_sniff_thread = Thread(target=self.arpSniff)
                     self.arp_sniff_thread.setDaemon(True)
                     self.arp_sniff_thread.start()
+                    if self.pcapfile:
+                        self.tcpdump = Thread(target=self.myTCPdump)
+                        self.tcpdump.setDaemon(True)
+                        self.tcpdump.start()
+
                     if not self.intercepter:
                         self.intercepter = interceptor.Interceptor()
                         if self.is_outgoing:
@@ -743,22 +763,25 @@ class ScapyBridge(object):
             self.cleanup = 'Ready'
             
     def hexToPacket(self, hex):
-        print 'org hex:',hex
-        hex = " ".join(hex[i:i+2] for i in range(0, len(hex), 2))
-        hex = "00000 " + hex
-        print ('want to use hex:', hex)
-        txt_fd, filename_txt = tempfile.mkstemp('.txt')
-        temp_txt = os.fdopen(txt_fd,'w')
-        temp_txt.write(hex)
-        temp_txt.close()
-        temp_pcap,filename_pcap = tempfile.mkstemp('.pcap')
-        command = "text2pcap "+filename_txt+" "+filename_pcap+" "
-        print ('using:', filename_txt, ' and ', filename_pcap, ' - doing: ', command)
-        os.system(command)
-        os.remove(filename_txt)
-        packet= rdpcap(filename_pcap)[0]
-        os.remove(filename_pcap)
-        return packet
+        try:
+            print 'org hex:',hex
+            hex = " ".join(hex[i:i+2] for i in range(0, len(hex), 2))
+            hex = "00000 " + hex
+            #print ('want to use hex:', hex)
+            txt_fd, filename_txt = tempfile.mkstemp('.txt')
+            temp_txt = os.fdopen(txt_fd,'w')
+            temp_txt.write(hex)
+            temp_txt.close()
+            temp_pcap,filename_pcap = tempfile.mkstemp('.pcap')
+            command = "text2pcap "+filename_txt+" "+filename_pcap+" "
+            #print ('using:', filename_txt, ' and ', filename_pcap, ' - doing: ', command)
+            os.system(command)
+            os.remove(filename_txt)
+            packet= rdpcap(filename_pcap)[0]
+            os.remove(filename_pcap)
+            return packet
+        except:
+            return Ether()
         
 
     # ran from seperate process
@@ -782,31 +805,36 @@ class ScapyBridge(object):
             hex_text = ''
             if arp:
                 packet = Ether(arp)
-            elif ll_data:
+                '''
+            else:#if ll_data:
                 hex_text = str(ll_data).encode('hex')
                 if data:
                     hex_text = hex_text + str(data).encode('hex')
+                print 'adding ether'
+                packet = Ether()/IP(hex_text.decode('hex'))
+                packet.show2()
+                hex_text = raw(packet)
                 print 'data   :', ll_data, data
                 print 'encoded:', hex_text
                 packet = self.hexToPacket(hex_text)
                 print'done dissect:'
                 packet.show2()
                 print'would have got:'
-                (Ether(ll_data) / IP(data)).show2()
+                (Ether(ll_data) / IP(data)).show2()'''
             else:
-                print 'no ll_data'
+                #print 'no ll_data'
                 if data:
                     packet = Ether(ll_data) / IP(data)
                 else:
                     packet = Ether(ll_data)
-            '''
-            if data:
-                packet = Ether(ll_data) / IP(data)
-                org = Ether(ll_data) / IP(data)
-            else:
-                packet = Ether(ll_data)
-                org = Ether(ll_data)
-            '''
+            org = packet.copy()
+            org.show2()
+            packet.show2()
+            print (raw(packet).encode('hex'))
+            #print '~~~~~~~~~~~~~~~~~'
+            #print 'or maybe....'
+            #Ether(data).show2()
+            print'======================='
             
             #if data:
                 #print ('want to use hex:', str(ll_data).encode('hex') + str(data).encode('hex'))
@@ -887,9 +915,8 @@ class ScapyBridge(object):
                             return data, interceptor.NF_DROP
                     except:
                         print 'HOOK FAILED'
-            
-            
-            # list packet arival
+
+            # list packet arival - add to queue
             self.queue_lock.acquire()
             i_have_lock = 1
             print("Got a packet " + str(num))  # +":", packet.summary())
@@ -933,79 +960,14 @@ class ScapyBridge(object):
                 self.tbmg.timers.append(timelabel)
             self.queue_lock.release()
             i_have_lock = 0
-            '''
-                # TODO check queue gui
-                def checkReorderQueue():
-                    print 'check order...'
-                    numbers = []
-                    queue_gui = self.tbmg.netqueueframeS.interior if self.is_outgoing else self.tbmg.netqueueframeR.interior
-                    for frame in queue_gui.winfo_children():
-                        if not frame.winfo_children():
-                            continue
-                        pack_button = frame.grid_slaves()[1]
-                        try:
-                            order_number = int(pack_button.cget('text').split(':')[0])
-                        except:
-                            continue
-                        for n in numbers:
-                            if order_number < n:
-                                return True
-                        numbers.append(order_number)
-                    print 'order is fine....'
-                    return False
-                
-                def reorderQueue():
-                    print 'REORDERING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-                    queue_gui = self.tbmg.netqueueframeS.interior if self.is_outgoing else self.tbmg.netqueueframeR.interior
-                    all_frames = queue_gui.winfo_children()
-                    not_frames = []
-                    for item in all_frames:
-                        if not item.winfo_children():
-                            not_frames.append(item)
-                    for item in not_frames:
-                        all_frames.remove(item)
-                    print 'got all frames...........................'
-                    ordered_frames = []
-                    #for w in queue_gui.pack_slaves():
-                    #    w.destroy()
-                    #queue_gui.pack_forget()
-                    #queue_gui.grid_forget()
-                    for frame in all_frames:
-                        try:
-                            pack_button = frame.grid_slaves()[1]
-                            a = int(pack_button.cget('text').split(':')[0])
-                            #print 'testing:',pack_button.cget('text')[:15]
-                        except Exception as e:
-                            print 'BAD FRAME',e #werid frame
-                        i = 0
-                        added = False
-                        for ordered in ordered_frames:
-                            b = int(ordered.grid_slaves()[1].cget('text').split(':')[0])
-                            added = a < b
-                            if added:
-                                ordered_frames.insert(i, frame)
-                                break
-                            i = i+1
-                        if not added:
-                            ordered_frames.append(frame)
-                    for item in ordered_frames:
-                        item.destory()
-                    for frame in ordered_frames:
-                        print self.is_outgoing,'ordering::::::::::::::::', frame.grid_slaves()[1].cget('text')[:15]
-                        frame.pack()
-                    self.tbmg.root.update()
-                    print '-----------------done order'
-                #if checkReorderQueue():
-                #    reorderQueue()
-                #self.packet_queue.append([1, packet, id, button, timelabel])
-            '''
-            
+
             # lock - one at a time get to render,
             was_intercepting = self.intercepting
             print 'want lock'
             self.display_lock.acquire()
             i_have_lock = 2
             print 'got lock for ',str(num)
+            #check status
             if not self.status:
                 print 'I should not be on...', num
                 try:
@@ -1045,7 +1007,8 @@ class ScapyBridge(object):
                 print 'hit num.im at',str(num)
                 self.skip_to_pack_num=0
             
-            self.current_pack = packet
+            self.current_pack = packet.copy()
+            self.current_pack.show2()
             if self.intercepting:
                 print 'intercepting'
                 if self.filter and not dofilter:
@@ -1083,37 +1046,33 @@ class ScapyBridge(object):
                         return data, interceptor.NF_DROP
                 elif recv == 'accept':
                     print "ACCEPTING", str(num)
-                    print 'here it goes.....'
                     try:
                         self.tbmg.timers.remove(timelabel)
                     except:
                         print 'could not remove timelabel'
-                    #try:
-                    #self.clearDisect()
-                    print 'removed timer...'
                     if not(was_intercepting and not self.intercepting) and self.status:#if normal skip/accept
                         print 'destorying frame'
                         test_frame.destroy()
-                    #self.clearRaw()
-                    #except:
-                    #    print 'troubling clearings stuff up'
-                    #    pass
+                    #TODO add to pcap
+                    if self.pcapfile:
+                        wrpcap(self.pcapfile, org, append=True)
+                        wrpcap(self.pcapfile[:-5] + '_mod.pcap', org, append=True)
                     print 'accept going to release'
                     self.display_lock.release()
                     print 'accept released'
                     if data:
                         return data, interceptor.NF_ACCEPT
                     elif self.intercepting:
-                        #sendp(packet)
+                        #sendp(packet) #manual send arp?
                         return
                 elif recv == 'raw':
                     recv = str(self.child_conn.recv())
                     #TODO make more definite way...
-                    self.current_pack = self.hexToPacket(recv)
-                    #if data:
-                    #    self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
-                    #else:
-                    #    self.current_pack = Ether(recv)#TODO check if arp gets this
+                    #self.current_pack = self.hexToPacket(recv)
+                    if data:
+                        self.current_pack = Ether(recv[:recv.index('450000')].decode('hex'))/ IP(recv[recv.index('450000'):].decode('hex'))
+                    else:
+                        self.current_pack = Ether(recv)#TODO check if arp gets this
                 elif recv == 'disect':#already been modded
                     pass
                 

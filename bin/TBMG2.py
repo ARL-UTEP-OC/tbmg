@@ -140,6 +140,8 @@ class Application(Frame):
             except:
                 pass
             self.interfaces.append([str(i),ip,mac])
+        self.output_interface = None
+        self.iptables_interface = None
         print 'MY MACS:', self.macs
         self.scapybridgeS = ScapyBridge(self, True)
         self.scapybridgeR = ScapyBridge(self, False)
@@ -408,8 +410,9 @@ class Application(Frame):
         #############################################################
         self.page8 = page8
         self.output_interface = None
+        self.iptables_interface = None
             
-        def popUpInterfaces():
+        def popUpInterfaces_ScapyOutput():
             def setOutputInterface(name):
                 self.output_interface = name
                 print 'OUT INTERFACE = ', name
@@ -424,9 +427,30 @@ class Application(Frame):
                 b.pack(fill=X)
             b = Button(scroll, text='Default', command=lambda: setOutputInterface(None))
             b.pack(fill=X)
+
+        def popUpInterfaces_IptablesInterface():
+            def setIptablesInterface(name):
+                self.iptables_interface = name
+                print 'IPTABLES INTERFACE = ', name
+                self.scapybridgeR.defineIptableRules()
+                self.scapybridgeS.defineIptableRules()
+                popup.destroy()
+            popup = Toplevel()
+            popup.title = 'Select Output Interface'
+            scroll = VerticalScrolledFrame(popup)
+            scroll.pack()
+            for device in self.interfaces:
+                print 'devices:',device
+                b = Button(scroll, text=(device[0]+"; "+device[1]+"; "+device[2]), command=lambda name=device[0]: setIptablesInterface(name))
+                b.pack(fill=X)
+            b = Button(scroll, text='Default', command=lambda: setIptablesInterface(None))
+            b.pack(fill=X)
         
-        self.select_interface = Button(page8, text='Select Scapy Output\nInterface', command=popUpInterfaces)
-        self.select_interface.grid(row=0, column=0, sticky='NEWS')
+        self.select_out_interface = Button(page8, text='Select Scapy Output\nInterface', command=popUpInterfaces_ScapyOutput)
+        self.select_out_interface.grid(row=0, column=0, sticky='NEWS')
+
+        self.select_iptables_interface = Button(page8, text='Select Iptables\nInterface', command=popUpInterfaces_IptablesInterface)
+        self.select_iptables_interface.grid(row=1, column=0, sticky='NEWS')
         #############################################################
         #############################################################
         self.iptables_save = '/root/tbmg/bin/iptables_save.txt'
