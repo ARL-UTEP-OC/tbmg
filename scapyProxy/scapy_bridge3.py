@@ -60,6 +60,27 @@ class ScapyBridge(object):
         self.proto_colors = {}
         self.loadSettings()
 
+    
+    #delete chksum and len fields of each layer and have show2 fix it xD
+    def fixPacket(self, p):
+        index = 0
+        while 1:
+            try:
+                p[index]
+                try:
+                    del p[index].chksum
+                except:
+                    pass
+                try:
+                    del p[index].len
+                except:
+                    pass
+                index = index+1
+            except:
+                break
+        p.show2()
+        return p
+    
     def defineIptableRules(self):
         if self.is_outgoing:
             self.iptablesr = 'iptables -I OUTPUT 1 -j NFQUEUE --queue-balance 0:19; iptables -I FORWARD 1 -j NFQUEUE --queue-balance 0:19'
@@ -170,22 +191,7 @@ class ScapyBridge(object):
             text = str(self.tbmg.rawtextP.get('0.0', END)).strip()
             self.current_packPCAP = Ether(text.decode('hex'))
             print 'going to send raw...'
-            self.current_packPCAP.show2()
-            try:
-                del(self.current_packPCAP['IP'].chksum)
-                del (self.current_packPCAP['IP'].len)
-            except:
-                print 'messed up fixing checksum/len'
-            try:
-                del (self.current_packPCAP['UDP'].chksum)
-                del (self.current_packPCAP['UDP'].len)
-            except:
-                print 'messed up fixing checksum/len udp'
-            try:
-                del (self.current_packPCAP['TCP'].chksum)
-                del (self.current_packPCAP['TCP'].len)
-            except:
-                print 'messed up fixing checksum/len tcp'
+            self.current_packPCAP = self.fixPacket(self.current_packPCAP)
             if self.tbmg.output_interface:
                 sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
             else:
@@ -203,12 +209,7 @@ class ScapyBridge(object):
                 self.parent_conn.send(text)
             else:
                 print 'going to send raw...'
-                self.current_packPCAP.show2()
-                try:
-                    del (self.current_packPCAP['IP'].chksum)
-                    del (self.current_packPCAP['IP'].len)
-                except:
-                    print 'messed up fixing checksum/len'
+                self.current_packPCAP = self.fixPacket(self.current_packPCAP)
                 if self.tbmg.output_interface:
                     sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
                 else:
@@ -345,27 +346,11 @@ class ScapyBridge(object):
             self.parent_conn.send(r)
         else:
             print 'going to send...'
-            local_current_pack.show2()
-            self.current_packPCAP.show2()
-            try:
-                del (self.current_packPCAP['IP'].chksum)
-                del (self.current_packPCAP['IP'].len)
-            except:
-                print 'messed up fixing checksum/len'
-            try:
-                del (self.current_packPCAP['UDP'].chksum)
-                del (self.current_packPCAP['UDP'].len)
-            except:
-                print 'messed up fixing checksum/len udp'
-            try:
-                del (self.current_packPCAP['TCP'].chksum)
-                del (self.current_packPCAP['TCP'].len)
-            except:
-                print 'messed up fixing checksum/len tcp'
+            self.current_packPCAP = self.fixPacket(local_current_pack)
             if self.tbmg.output_interface:
                 sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
             else:
-                sendp(local_current_pack)
+                sendp(self.current_packPCAP)
             print 'send packet'
         if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
             self.gui_layersPCAP = None
@@ -891,25 +876,10 @@ class ScapyBridge(object):
                         old_packet = packet.copy()
                         packet, accept_or_drop = hook[0](packet).run()
                         # fix chksum and len
-                        try:
-                            del (packet['IP'].chksum)
-                            del (packet['IP'].len)
-                        except:
-                            print 'messed up fixing checksum/len udp'
-                        try:
-                            del (packet['UDP'].chksum)
-                            del (packet['UDP'].len)
-                        except:
-                            print 'messed up fixing checksum/len udp'
-                        try:
-                            del (packet['TCP'].chksum)
-                            del (packet['TCP'].len)
-                        except:
-                            print 'messed up fixing checksum/len tcp'
                         print 'old pack:'
                         old_packet.show()
                         print 'new pack:'
-                        packet.show2()
+                        packet = self.fixPacket(packet)
                         print '-----------------'
                         if accept_or_drop == interceptor.NF_DROP:
                             print 'hook is droping the packet'
@@ -1078,22 +1048,7 @@ class ScapyBridge(object):
                     pass
                 
                 # fix chksum and len
-                try:
-                    del (self.current_packPCAP['IP'].chksum)
-                    del (self.current_packPCAP['IP'].len)
-                except:
-                    print 'messed up fixing checksum/len udp'
-                try:
-                    del (self.current_packPCAP['UDP'].chksum)
-                    del (self.current_packPCAP['UDP'].len)
-                except:
-                    print 'messed up fixing checksum/len udp'
-                try:
-                    del (self.current_packPCAP['TCP'].chksum)
-                    del (self.current_packPCAP['TCP'].len)
-                except:
-                    print 'messed up fixing checksum/len tcp'
-                
+                self.current_packPCAP = self.fixPacket(self.current_packPCAP)
                 self.clearDisect()
                 self.clearRaw()
                 #handle updated packet
