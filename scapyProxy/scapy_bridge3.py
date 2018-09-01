@@ -273,13 +273,8 @@ class ScapyBridge(object):
                                            (num >= int('A'.encode('hex')) and num <= int('F'.encode('hex'))) or
                                            (num >= int('0'.encode('hex')) and num <= int('9'.encode('hex')))):
                                         ok = False
-                                        #print letter + ' - is not ok with:', num
                                         break
-                                    else:
-                                        pass
-                                        #print letter+' - is ok with:',num
                                 if ok:
-                                    #value = '"' + value[1:-1].decode('hex') + '"'
                                     print 'should be ok HEX:',hex_value
                                     hex_value = hex_value.decode('hex')
                                     local_current_pack[layer].fields[pair[1].cget('text')] = hex_value
@@ -316,10 +311,11 @@ class ScapyBridge(object):
                             #    print(local_current_pack['Raw'].load, local_current_pack['Raw'].load.encode('hex'))
                             #    print('------------------')
                             #    continue  # use default val
+                            print 'setting raw.load=',value[1:-1]
                             local_current_pack['Raw'].load = value[1:-1]#.decode('hex')
                             continue
-                        except:
-                            pass #non hex decodable
+                        except Exception as e:
+                            print 'Err at raw.load',e
                     #('checking if equal:', 'local_current_pack[\'DNS\'].qd == "\ndiscordapp\x03com"')
                     #local_current_pack['DNS'].qd == "
                     # TODO add protocol exceptions here! ^^^
