@@ -215,6 +215,7 @@ class ScapyBridge(object):
                     sendp(self.current_pack)
                 print 'send packet'
     
+    #read dissect GUI and update current packet
     def sendDisectUpdate(self):
         print 'sendDisectUpdate'
         if not self.intercepting and not self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
@@ -257,7 +258,7 @@ class ScapyBridge(object):
                                 value = int(value.encode('hex'), 16)
                             else:
                                 value = '"' + value.decode('hex') + '"'  # assuming unicode
-                    # TODO add protocol exceptions here!
+                    # TODO add protocol exceptions here! vvv
                     try:
                         if type(value) == str and type1 == str:
                             hex_value = value
@@ -309,18 +310,18 @@ class ScapyBridge(object):
                         value = 'None'
                     if layer == 'Raw' and pair[1].cget('text') == 'load':  # ping 8.8.4.4
                         try:
-                            if not local_current_pack[layer].load == value[1:-1].decode('hex'):
-                                print("FOUND CHANGE in RAW!!!", value, value.encode('hex'))
-                                print(local_current_pack['Raw'].load, local_current_pack['Raw'].load.encode('hex'))
-                                print('------------------')
-                                continue  # use default val
-                            local_current_pack['Raw'].load = value[1:-1].decode('hex')
+                            #if not local_current_pack[layer].load == value[1:-1].decode('hex'):
+                            #    print("FOUND CHANGE in RAW!!!", value, value.encode('hex'))
+                            #    print(local_current_pack['Raw'].load, local_current_pack['Raw'].load.encode('hex'))
+                            #    print('------------------')
+                            #    continue  # use default val
+                            local_current_pack['Raw'].load = value[1:-1]#.decode('hex')
                             continue
                         except:
                             pass #non hex decodable
                     #('checking if equal:', 'local_current_pack[\'DNS\'].qd == "\ndiscordapp\x03com"')
                     #local_current_pack['DNS'].qd == "
-                    # TODO add protocol exceptions here!
+                    # TODO add protocol exceptions here! ^^^
                     #set value to packet
                     #execute = "local_current_pack['" + layer + "']." + pair[1].cget('text') + " = " + value
                     #print('setting:', execute)
