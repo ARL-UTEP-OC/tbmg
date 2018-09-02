@@ -237,10 +237,10 @@ class ScapyBridge(object):
         #self.current_pack.show2()
         if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
             gui_l = self.gui_layersPCAP
-            local_current_pack = self.current_packPCAP
+            local_current_pack = self.current_packPCAP.copy()
         else:
             gui_l = self.gui_layers
-            local_current_pack = self.current_pack
+            local_current_pack = self.current_pack.copy()
         for layer in gui_l:
             if layer and layer in local_current_pack:
                 for pair in gui_l[layer]:
@@ -316,6 +316,7 @@ class ScapyBridge(object):
                             continue
                         except Exception as e:
                             print 'Err at raw.load',e
+                            continue
                     #('checking if equal:', 'local_current_pack[\'DNS\'].qd == "\ndiscordapp\x03com"')
                     #local_current_pack['DNS'].qd == "
                     # TODO add protocol exceptions here! ^^^
@@ -334,19 +335,20 @@ class ScapyBridge(object):
         
         #local_current_pack.show()
         #local_current_pack.show2()
+        local_current_pack = self.fixPacket(local_current_pack)
         print 'making raw from disect'
         r = raw(local_current_pack)
         print('producing from disect:', r.encode('hex'))
         if self.status and self.intercepting:
-            self.current_pack = local_current_pack
+            self.current_pack = local_current_pack.copy()
             self.parent_conn.send(r)
         else:
             print 'going to send...'
-            self.current_packPCAP = self.fixPacket(local_current_pack)
+            self.current_packPCAP = local_current_pack.copy()
             if self.tbmg.output_interface:
                 sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
             else:
-                sendp(self.current_packPCAP)
+                sendp(local_current_pack)
             print 'send packet'
         if self.tbmg.traffic_tab.tab(self.tbmg.traffic_tab.select(), 'text') == 'PCAP':
             self.gui_layersPCAP = None
@@ -1044,36 +1046,38 @@ class ScapyBridge(object):
                     pass
                 
                 # fix chksum and len
-                self.current_packPCAP = self.fixPacket(self.current_packPCAP)
+                if self.tbmg.output_interface:
+                    self.current_packPCAP = self.fixPacket(self.current_packPCAP)
+                self.current_pack = self.fixPacket(self.current_pack)
                 self.clearDisect()
                 self.clearRaw()
                 #handle updated packet
                 if self.pcapfile:
                     wrpcap(self.pcapfile, org, append=True)
                     wrpcap(self.pcapfile[:-5] + '_mod.pcap', self.current_pack, append=True)
-                print 'sending updated....',raw(self.current_pack)
-                print 'rather than........',data
+                #print 'sending updated....',raw(self.current_pack)
+                #print 'rather than........',data
                 test_frame.destroy()
                 self.tbmg.timers.remove(timelabel)
                 
                 #if eth layer changed, NF_DROP and use scapy to send self.current_pack
-                if org['Ether'] != self.current_pack['Ether']:
-                    if data:
-                        self.ether_pass.append(self.current_pack)
-                        if self.tbmg.output_interface:
-                            sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
-                        else:
-                            sendp(self.current_pack)
-                        test_frame.destroy()
-                        self.display_lock.release()
-                        return raw(self.current_pack), interceptor.NF_DROP
-                    elif self.intercepting:
-                        if self.tbmg.output_interface:
-                            sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
-                        else:
-                            sendp(self.current_pack)
-                        self.display_lock.release()
-                        return
+                #if org['Ether'] != self.current_pack['Ether']:
+                #    if data:
+                #        self.ether_pass.append(self.current_pack)
+                #        if self.tbmg.output_interface:
+                #            sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+                #        else:
+                #            sendp(self.current_pack)
+                #        test_frame.destroy()
+                #        self.display_lock.release()
+                #        return raw(self.current_pack), interceptor.NF_DROP
+                #    elif self.intercepting:
+                #        if self.tbmg.output_interface:
+                #            sendp(self.current_packPCAP, iface=self.tbmg.output_interface)
+                #        else:
+                #            sendp(self.current_pack)
+                #        self.display_lock.release()
+                #        return
                 # TODO efficently delte self from packet queue
                 if data:
                     self.display_lock.release()
