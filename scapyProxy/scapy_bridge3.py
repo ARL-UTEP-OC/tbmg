@@ -399,7 +399,8 @@ class ScapyBridge(object):
             self.tbmg.rawtextP.insert('0.0', str(raw(self.current_packPCAP)).encode('hex'))
             sizelabel = Label(self.tbmg.disectlistP.interior, text='', width=50)
             sizelabel.grid(row=0, column=0, columnspan=5)
-            for i in range(10):
+            i = 0
+            while 1:
                 try:
                     l = pack.getlayer(i)
                     if not l:
@@ -452,8 +453,9 @@ class ScapyBridge(object):
                             entry.insert(0, str(l.fields[f]).encode('hex'))
                         self.gui_layersPCAP[l.name].append((layer, label, entry))
                         rownum += 1
+                    i = i + 1
                 except Exception, e:
-                    print 'print disect yes intercpet error', e
+                    #print 'print disect yes intercpet error', e
                     break
         elif self.is_outgoing:
             self.gui_layers = {}
@@ -462,7 +464,8 @@ class ScapyBridge(object):
                 self.tbmg.rawtextS.insert('0.0', str(raw(self.current_pack)).encode('hex'))
             sizelabel = Label(self.tbmg.disectlistS.interior, text='', width=50)
             sizelabel.grid(row=0, column=0, columnspan=5)
-            for i in range(10):
+            i = 0
+            while 1:
                 try:
                     l = pack.getlayer(i)
                     if not l:
@@ -516,8 +519,9 @@ class ScapyBridge(object):
                             entry.insert(0, str(l.fields[f]).encode('hex'))
                         self.gui_layers[l.name].append((layer, label, entry))
                         rownum += 1
+                    i = i + 1
                 except Exception, e:
-                    print 'print disect yes intercpet error', e
+                    #print 'print disect yes intercpet error', e
                     break
         else:
             self.gui_layers = {}
@@ -526,7 +530,8 @@ class ScapyBridge(object):
                 self.tbmg.rawtextR.insert('0.0', str(raw(self.current_pack)).encode('hex'))
             sizelabel = Label(self.tbmg.disectlistR.interior, text='', width=50)
             sizelabel.grid(row=0, column=0, columnspan=5)
-            for i in range(10):
+            i = 0
+            while 1:
                 try:
                     l = pack.getlayer(i)
                     if not l:
@@ -580,8 +585,9 @@ class ScapyBridge(object):
                             entry.insert(0, str(l.fields[f]).encode('hex'))
                         self.gui_layers[l.name].append((layer, label, entry))
                         rownum += 1
+                    i = i + 1
                 except Exception, e:
-                    print 'print disect yes intercpet error', e
+                    #print 'print disect yes intercpet error', e
                     break
         
         self.tbmg.root.update()

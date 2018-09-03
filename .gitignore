@@ -3228,3 +3228,13 @@ tbmg-container/pip-selfcheck\.json
 tbmg-container/share/man/man1/scapy\.1\.gz
 
 bin/iptables_save\.txt
+
+bin/active\.xml
+
+index\.html
+
+index\.html\.1
+
+index\.html\.2
+
+scapyProxy/TO_DELETE/__init__\.py
