@@ -1015,6 +1015,8 @@ class ScapyBridge(object):
                     print 'DROPING'
                     self.tbmg.timers.remove(timelabel)
                     test_frame.destroy()
+                    self.clearDisect()
+                    self.clearRaw()
                     self.display_lock.release()
                     #TODO efficently delete self from packet queue
                     if data:
