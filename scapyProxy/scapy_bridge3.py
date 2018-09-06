@@ -403,8 +403,6 @@ class ScapyBridge(object):
             while 1:
                 try:
                     l = pack.getlayer(i)
-                    if not l:
-                        continue
                     self.gui_layersPCAP[l.name] = []
                     layer = Label(self.tbmg.disectlistP.interior, text=l.name)
                     if l.name in self.tbmg.scapybridgeS.proto_colors:
@@ -439,6 +437,7 @@ class ScapyBridge(object):
                         entry.insert(0, str(pack[0].type).encode('utf8'))
                         self.gui_layersPCAP[l.name].append((layer, label, entry))
                         rownum += 1
+                        i = i + 1
                         continue
             
                     for f in l.fields:
@@ -468,8 +467,6 @@ class ScapyBridge(object):
             while 1:
                 try:
                     l = pack.getlayer(i)
-                    if not l:
-                        continue
                     self.gui_layers[l.name] = []
                     
                     layer = Label(self.tbmg.disectlistS.interior, text=l.name)
@@ -505,6 +502,7 @@ class ScapyBridge(object):
                         entry.insert(0, str(pack[0].type).encode('utf8'))
                         self.gui_layers[l.name].append((layer, label, entry))
                         rownum += 1
+                        i = i + 1
                         continue
                         
                     for f in l.fields:
@@ -534,8 +532,6 @@ class ScapyBridge(object):
             while 1:
                 try:
                     l = pack.getlayer(i)
-                    if not l:
-                        continue
                     self.gui_layers[l.name] = []
             
                     layer = Label(self.tbmg.disectlistR.interior, text=l.name)
@@ -571,6 +567,7 @@ class ScapyBridge(object):
                         entry.insert(0, str(pack[0].type).encode('utf8'))
                         self.gui_layers[l.name].append((layer, label, entry))
                         rownum += 1
+                        i = i + 1
                         continue
             
                     for f in l.fields:
